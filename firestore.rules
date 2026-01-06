@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    match /projects/{projectId} {
+      // Allow read if user is authenticated AND is listed in memberIds
+      // This allows 'array-contains' queries to work.
+      allow read: if signedIn() && resource.data.memberIds.hasAny([request.auth.uid]);
+      
+      allow create: if signedIn();
+      allow update: if signedIn() && resource.data.memberIds.hasAny([request.auth.uid]);
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /boards/{boardId} {
+      allow read, write: if signedIn(); // MVP (refine later)
+    }
+
+    match /issues/{issueId} {
+      allow read, write: if signedIn(); // MVP (refine later)
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
