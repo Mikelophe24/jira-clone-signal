@@ -15,13 +15,14 @@ import { routes } from './app.routes';
 import { environment } from '../environments/environment';
 
 import { MAT_DATE_LOCALE, MatNativeDateModule } from '@angular/material/core';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(routes),
     provideAnimationsAsync(),
-    importProvidersFrom(MatNativeDateModule),
+    importProvidersFrom(MatNativeDateModule, MatSnackBarModule),
     { provide: MAT_DATE_LOCALE, useValue: 'en-GB' },
 
     provideFirebaseApp(() => initializeApp(environment.firebase)),

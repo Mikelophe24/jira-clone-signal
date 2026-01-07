@@ -166,9 +166,7 @@ export class MyTasks {
   constructor() {
     effect(() => {
       const user = this.authStore.user();
-      if (user) {
-        this.store.loadMyIssues(user.uid);
-      }
+      this.store.loadMyIssues(user ? user.uid : null);
     });
   }
 

@@ -1,17 +1,22 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector, runInInjectionContext } from '@angular/core';
 import { Firestore, collectionData } from '@angular/fire/firestore';
 import { collection, doc, addDoc, updateDoc, query, where, deleteDoc } from 'firebase/firestore';
 import { Project } from './project.model';
-import { Observable, of } from 'rxjs';
+import { Observable, of, combineLatest } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectsService {
   private firestore = inject(Firestore);
+  private injector = inject(Injector);
   private projectsCollection = collection(this.firestore, 'projects');
 
   getProjects(userId: string): Observable<Project[]> {
     const q = query(this.projectsCollection, where('memberIds', 'array-contains', userId));
-    return collectionData(q, { idField: 'id' }) as Observable<Project[]>;
+    return runInInjectionContext(
+      this.injector,
+      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>
+    );
   }
 
   addProject(project: Partial<Project>) {
@@ -25,17 +30,27 @@ export class ProjectsService {
 
   getUsers(userIds: string[]): Observable<any[]> {
     if (!userIds || userIds.length === 0) return of([]);
+
     // Firestore 'in' query supports max 10 values.
-    // For MVP, we assume small teams. For production, we'd need to chunk this.
+    // We chunk the array into groups of 10 to support any number of members.
+    const chunks: string[][] = [];
+    for (let i = 0; i < userIds.length; i += 10) {
+      chunks.push(userIds.slice(i, i + 10));
+    }
+
     const usersCollection = collection(this.firestore, 'users');
-    const q = query(usersCollection, where('uid', 'in', userIds.slice(0, 10)));
-    return collectionData(q);
+    const observables = chunks.map((chunk) => {
+      const q = query(usersCollection, where('uid', 'in', chunk));
+      return runInInjectionContext(this.injector, () => collectionData(q));
+    });
+
+    return combineLatest(observables).pipe(map((results) => results.flat()));
   }
 
   findUserByEmail(email: string): Observable<any[]> {
     const usersCollection = collection(this.firestore, 'users');
     const q = query(usersCollection, where('email', '==', email));
-    return collectionData(q);
+    return runInInjectionContext(this.injector, () => collectionData(q));
   }
 
   addMemberToProject(projectId: string, newMemberId: string, currentMemberIds: string[]) {
@@ -55,7 +70,10 @@ export class ProjectsService {
 
   getPendingInvites(userId: string): Observable<Project[]> {
     const q = query(this.projectsCollection, where('invitedMemberIds', 'array-contains', userId));
-    return collectionData(q, { idField: 'id' }) as Observable<Project[]>;
+    return runInInjectionContext(
+      this.injector,
+      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>
+    );
   }
 
   async acceptInvite(project: Project, userId: string) {

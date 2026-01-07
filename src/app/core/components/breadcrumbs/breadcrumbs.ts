@@ -11,9 +11,14 @@ import { toSignal } from '@angular/core/rxjs-interop';
   imports: [RouterLink, MatIconModule],
   template: `
     <nav class="breadcrumbs">
+      @if (isHomePage()) {
+      <span class="crumb-text">Home</span>
+      } @else if (isMyTasksPage()) {
+      <span class="crumb-text">My Tasks</span>
+      } @else if (isProjectsListPage()) {
+      <span class="crumb-text">Projects</span>
+      } @else if (projectName()) {
       <a routerLink="/projects" class="crumb-link">Projects</a>
-
-      @if (projectName()) {
       <mat-icon class="separator">chevron_right</mat-icon>
       <span class="crumb-text">{{ projectName() }}</span>
       @if (viewName()) {
@@ -68,6 +73,21 @@ export class BreadcrumbsComponent {
   // We mainly need to know if we are on a "project" route.
 
   currentUrl = toSignal(this.router.events.pipe(filter((event) => event instanceof NavigationEnd)));
+
+  isHomePage = computed(() => {
+    this.currentUrl(); // Trigger dependency
+    return this.router.url === '/home' || this.router.url === '/';
+  });
+
+  isMyTasksPage = computed(() => {
+    this.currentUrl(); // Trigger dependency
+    return this.router.url === '/my-tasks';
+  });
+
+  isProjectsListPage = computed(() => {
+    this.currentUrl(); // Trigger dependency
+    return this.router.url === '/projects';
+  });
 
   projectName = computed(() => {
     // Check if current route involves a project

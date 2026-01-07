@@ -20,11 +20,15 @@ export const MyTasksStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
   withMethods((store, issueService = inject(IssueService)) => ({
-    loadMyIssues: rxMethod<string>(
+    loadMyIssues: rxMethod<string | null>(
       pipe(
         tap(() => console.log('Loading my issues...')),
         tap(() => patchState(store, { loading: true })),
         switchMap((userId) => {
+          if (!userId) {
+            patchState(store, { issues: [], loading: false });
+            return [];
+          }
           console.log('Querying for userId:', userId);
           return issueService.getMyIssues(userId);
         }),

@@ -2,73 +2,93 @@ import { signalStore, withState, withMethods, patchState, withHooks } from '@ngr
 import { inject } from '@angular/core';
 import { AuthService } from './auth.service';
 import { User } from '@angular/fire/auth';
-import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, tap, switchMap } from 'rxjs';
-
 import { Router } from '@angular/router';
+import { withLoadingError } from '../../shared/store-features/with-loading-error.feature';
+import { ErrorNotificationService } from '../services/error-notification.service';
 
 type AuthState = {
   user: User | null;
-  loading: boolean;
-  error: string | null;
 };
 
 const initialState: AuthState = {
   user: null,
-  loading: true,
-  error: null,
 };
 
 export const AuthStore = signalStore(
   { providedIn: 'root' },
+  withLoadingError(),
   withState(initialState),
-  withMethods((store, authService = inject(AuthService), router = inject(Router)) => ({
-    login: async () => {
-      patchState(store, { loading: true, error: null });
-      try {
-        console.log('Attempting to login with Google...');
-        await authService.loginWithGoogle();
-        console.log('Login successful');
-      } catch (error: any) {
-        console.error('Login failed', error);
-        patchState(store, { error: error.message || 'Login failed' });
-      } finally {
-        patchState(store, { loading: false });
-      }
-    },
-    loginEmail: async (email: string, pass: string) => {
-      patchState(store, { loading: true, error: null });
-      try {
-        await authService.loginWithEmail(email, pass);
-      } catch (error: any) {
-        patchState(store, { error: error.message || 'Login failed' });
-      } finally {
-        patchState(store, { loading: false });
-      }
-    },
-    register: async (email: string, pass: string, name: string) => {
-      patchState(store, { loading: true, error: null });
-      try {
-        await authService.registerWithEmail(email, pass, name);
-      } catch (error: any) {
-        patchState(store, { error: error.message || 'Registration failed' });
-      } finally {
-        patchState(store, { loading: false });
-      }
-    },
-    logout: async () => {
-      await authService.logout();
-      patchState(store, { user: null });
-      router.navigate(['/login']);
-    },
-    _setUser: (user: User | null) => {
-      // Internal use
-      patchState(store, { user, loading: false });
-    },
-  })),
+  withMethods(
+    (
+      store,
+      authService = inject(AuthService),
+      router = inject(Router),
+      errorService = inject(ErrorNotificationService)
+    ) => ({
+      login: async () => {
+        store.setLoading(true);
+        store.clearError();
+        try {
+          console.log('Attempting to login with Google...');
+          await authService.loginWithGoogle();
+          console.log('Login successful');
+          errorService.showSuccess('Welcome! Login successful');
+          store.setLoading(false);
+        } catch (error: any) {
+          const errorMessage = error?.message || 'Login failed';
+          console.error('Login failed', error);
+          store.setError(errorMessage);
+          errorService.showError(errorMessage);
+        }
+      },
+      loginEmail: async (email: string, pass: string) => {
+        store.setLoading(true);
+        store.clearError();
+        try {
+          await authService.loginWithEmail(email, pass);
+          errorService.showSuccess('Welcome back!');
+          store.setLoading(false);
+        } catch (error: any) {
+          const errorMessage = error?.message || 'Login failed';
+          store.setError(errorMessage);
+          errorService.showError(errorMessage);
+        }
+      },
+      register: async (email: string, pass: string, name: string) => {
+        store.setLoading(true);
+        store.clearError();
+        try {
+          await authService.registerWithEmail(email, pass, name);
+          errorService.showSuccess('Account created successfully! Welcome!');
+          store.setLoading(false);
+        } catch (error: any) {
+          const errorMessage = error?.message || 'Registration failed';
+          store.setError(errorMessage);
+          errorService.showError(errorMessage);
+        }
+      },
+      logout: async () => {
+        try {
+          await authService.logout();
+          patchState(store, { user: null });
+          errorService.showInfo('You have been logged out');
+          router.navigate(['/login']);
+        } catch (error: any) {
+          const errorMessage = error?.message || 'Logout failed';
+          store.setError(errorMessage);
+          errorService.showError(errorMessage);
+        }
+      },
+      _setUser: (user: User | null) => {
+        // Internal use - called by auth state subscription
+        patchState(store, { user });
+        store.setLoading(false);
+      },
+    })
+  ),
   withHooks({
     onInit(store, authService = inject(AuthService)) {
-      // Subscribe to user changes
+      // Subscribe to Firebase auth state changes
       authService.user$.subscribe((user) => {
         store._setUser(user);
       });

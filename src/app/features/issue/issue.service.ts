@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, Injector, runInInjectionContext } from '@angular/core';
 import { Firestore, collectionData } from '@angular/fire/firestore';
 import {
   collection,
@@ -16,16 +16,23 @@ import { Observable } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class IssueService {
   private firestore = inject(Firestore);
+  private injector = inject(Injector);
   private issuesCollection = collection(this.firestore, 'issues');
 
   getIssues(projectId: string): Observable<Issue[]> {
     const q = query(this.issuesCollection, where('projectId', '==', projectId));
-    return collectionData(q, { idField: 'id' }) as Observable<Issue[]>;
+    return runInInjectionContext(
+      this.injector,
+      () => collectionData(q, { idField: 'id' }) as Observable<Issue[]>
+    );
   }
 
   getMyIssues(userId: string): Observable<Issue[]> {
     const q = query(this.issuesCollection, where('assigneeId', '==', userId));
-    return collectionData(q, { idField: 'id' }) as Observable<Issue[]>;
+    return runInInjectionContext(
+      this.injector,
+      () => collectionData(q, { idField: 'id' }) as Observable<Issue[]>
+    );
   }
 
   addIssue(issue: Partial<Issue>) {

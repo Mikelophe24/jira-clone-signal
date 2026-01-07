@@ -206,11 +206,9 @@ export class AppComponent {
   constructor() {
     effect(() => {
       const user = this.authStore.user();
-      if (user) {
-        this.projectsStore.loadInvites(user.uid);
-        // Load projects globally so sidebar is populated
-        this.projectsStore.loadProjects(user.uid);
-      }
+      this.projectsStore.loadInvites(user ? user.uid : null);
+      // Load projects globally so sidebar is populated
+      this.projectsStore.loadProjects(user ? user.uid : null);
     });
   }
 

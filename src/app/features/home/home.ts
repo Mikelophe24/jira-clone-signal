@@ -287,9 +287,7 @@ export class Home {
   constructor() {
     effect(() => {
       const user = this.authStore.user();
-      if (user) {
-        this.myTasksStore.loadMyIssues(user.uid);
-      }
+      this.myTasksStore.loadMyIssues(user ? user.uid : null);
     });
   }
 
