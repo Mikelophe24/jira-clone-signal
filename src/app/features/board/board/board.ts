@@ -2,13 +2,8 @@ import { Component, inject, OnInit, effect } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { BoardStore } from '../board.store';
 import { ProjectsStore } from '../../projects/projects.store';
-import { AuthStore } from '../../../core/auth/auth.store'; // Correct path
-import {
-  DragDropModule,
-  CdkDragDrop,
-  moveItemInArray,
-  transferArrayItem,
-} from '@angular/cdk/drag-drop';
+import { AuthStore } from '../../../core/auth/auth.store';
+import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { Issue, IssuePriority } from '../../issue/issue.model';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,11 +19,14 @@ import { FormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { CommonModule, DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-board',
   standalone: true,
   imports: [
+    CommonModule,
+    DatePipe,
     DragDropModule,
     MatCardModule,
     MatButtonModule,
@@ -45,6 +43,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
     IssueDialog,
     MembersDialog,
   ],
+
   template: `
     <div class="board-container">
       <div class="board-header">
@@ -122,6 +121,15 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
                       {{ getPriorityIcon(issue.priority) }}
                     </mat-icon>
                     <span class="key">{{ issue.key }}</span>
+                    @if (issue.dueDate) {
+                    <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                      <mat-icon
+                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                        >calendar_today</mat-icon
+                      >
+                      {{ issue.dueDate | date : 'd MMM' }}
+                    </span>
+                    }
                   </div>
                   @if (getAssignee(issue.assigneeId); as assignee) {
                   <img
@@ -186,6 +194,15 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
                       {{ getPriorityIcon(issue.priority) }}
                     </mat-icon>
                     <span class="key">{{ issue.key }}</span>
+                    @if (issue.dueDate) {
+                    <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                      <mat-icon
+                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                        >calendar_today</mat-icon
+                      >
+                      {{ issue.dueDate | date : 'd MMM' }}
+                    </span>
+                    }
                   </div>
                   @if (getAssignee(issue.assigneeId); as assignee) {
                   <img
@@ -250,6 +267,15 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
                       {{ getPriorityIcon(issue.priority) }}
                     </mat-icon>
                     <span class="key">{{ issue.key }}</span>
+                    @if (issue.dueDate) {
+                    <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                      <mat-icon
+                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                        >calendar_today</mat-icon
+                      >
+                      {{ issue.dueDate | date : 'd MMM' }}
+                    </span>
+                    }
                   </div>
                   @if (getAssignee(issue.assigneeId); as assignee) {
                   <img
@@ -498,6 +524,23 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
         align-items: center;
         justify-content: center;
       }
+
+      .due-date {
+        margin-left: 8px;
+        font-size: 11px;
+        color: #5e6c84;
+        display: flex;
+        align-items: center;
+        background: rgba(9, 30, 66, 0.04);
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .due-date.overdue {
+        color: #de350b;
+        background: #ffebe6;
+        font-weight: 600;
+      }
     `,
   ],
 })
@@ -518,7 +561,7 @@ export class Board implements OnInit {
   }
 
   ngOnInit() {
-    this.route.paramMap.subscribe((params) => {
+    this.route.parent?.paramMap.subscribe((params) => {
       const projectId = params.get('projectId');
       if (projectId) {
         this.store.loadIssues(projectId);
@@ -616,5 +659,13 @@ export class Board implements OnInit {
       default:
         return '#172b4d';
     }
+  }
+
+  isOverdue(dateStr: string): boolean {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Ignore time for today check
+    return date < today;
   }
 }

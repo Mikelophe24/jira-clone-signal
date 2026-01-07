@@ -86,7 +86,10 @@ service cloud.firestore {
     }
 
     match /issues/{issueId} {
-      allow read: if signedIn() && isProjectMember(resource.data.projectId);
+      allow read: if signedIn() && (
+        resource.data.assigneeId == request.auth.uid || 
+        isProjectMember(resource.data.projectId)
+      );
 
       allow create: if signedIn() 
                     && isProjectMember(request.resource.data.projectId)

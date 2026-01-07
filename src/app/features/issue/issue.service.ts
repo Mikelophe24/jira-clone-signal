@@ -23,6 +23,11 @@ export class IssueService {
     return collectionData(q, { idField: 'id' }) as Observable<Issue[]>;
   }
 
+  getMyIssues(userId: string): Observable<Issue[]> {
+    const q = query(this.issuesCollection, where('assigneeId', '==', userId));
+    return collectionData(q, { idField: 'id' }) as Observable<Issue[]>;
+  }
+
   addIssue(issue: Partial<Issue>) {
     return addDoc(this.issuesCollection, issue);
   }

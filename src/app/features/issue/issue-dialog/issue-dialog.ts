@@ -5,6 +5,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { FormsModule } from '@angular/forms';
 import { Issue, IssuePriority, IssueType, Comment } from '../issue.model';
 import { IssueService } from '../issue.service';
@@ -29,6 +31,8 @@ import { DatePipe } from '@angular/common';
     MatButtonModule,
     MatSelectModule,
     MatIconModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
     FormsModule,
     NgFor,
     DatePipe,
@@ -67,15 +71,24 @@ import { DatePipe } from '@angular/common';
           </mat-form-field>
         </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Assignee</mat-label>
-          <mat-select [(ngModel)]="assigneeId" name="assignee">
-            <mat-option [value]="null">Unassigned</mat-option>
-            <mat-option *ngFor="let member of projectsStore.members()" [value]="member.uid">
-              {{ member.displayName }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
+        <div class="row">
+          <mat-form-field appearance="outline">
+            <mat-label>Assignee</mat-label>
+            <mat-select [(ngModel)]="assigneeId" name="assignee">
+              <mat-option [value]="null">Unassigned</mat-option>
+              <mat-option *ngFor="let member of projectsStore.members()" [value]="member.uid">
+                {{ member.displayName }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Due Date</mat-label>
+            <input matInput [matDatepicker]="picker" [(ngModel)]="dueDate" name="dueDate" />
+            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-datepicker #picker></mat-datepicker>
+          </mat-form-field>
+        </div>
       </form>
 
       <!-- Comments Section (Only for existing issues) -->
@@ -293,6 +306,7 @@ export class IssueDialog {
   priority: IssuePriority = 'medium';
   assigneeId: string | undefined | null = null;
   comments: any[] = [];
+  dueDate: Date | null = null;
   isEditing = false;
 
   newCommentText = '';
@@ -309,6 +323,7 @@ export class IssueDialog {
       this.priority = data.issue.priority;
       this.assigneeId = data.issue.assigneeId || null;
       this.comments = data.issue.comments || [];
+      this.dueDate = data.issue.dueDate ? new Date(data.issue.dueDate) : null;
     }
   }
 
@@ -377,6 +392,7 @@ export class IssueDialog {
       priority: this.priority,
       assigneeId: this.assigneeId || null,
       statusColumnId: this.data.statusColumnId,
+      dueDate: this.dueDate ? this.dueDate.toISOString() : null,
     };
 
     // Only include comments if creating a new issue

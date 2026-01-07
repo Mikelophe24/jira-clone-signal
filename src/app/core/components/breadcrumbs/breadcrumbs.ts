@@ -16,9 +16,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
       @if (projectName()) {
       <mat-icon class="separator">chevron_right</mat-icon>
       <span class="crumb-text">{{ projectName() }}</span>
+      @if (viewName()) {
       <mat-icon class="separator">chevron_right</mat-icon>
-      <span class="crumb-text">Board</span>
-      }
+      <span class="crumb-text">{{ viewName() }}</span>
+      } }
     </nav>
   `,
   styles: [
@@ -71,10 +72,23 @@ export class BreadcrumbsComponent {
   projectName = computed(() => {
     // Check if current route involves a project
     // We can rely on the store's selectedProject which is set by the Board component
+    // Trigger dependency on router change
+    this.currentUrl();
+
     const project = this.projectsStore.selectedProject();
     if (project && this.router.url.includes(`/project/${project.id}`)) {
       return project.name;
     }
+    return null;
+  });
+
+  viewName = computed(() => {
+    // Trigger dependency on router change
+    this.currentUrl();
+
+    const url = this.router.url;
+    if (url.includes('/board')) return 'Board';
+    if (url.includes('/backlog')) return 'Backlog';
     return null;
   });
 }

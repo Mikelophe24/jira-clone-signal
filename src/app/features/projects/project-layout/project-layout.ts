@@ -5,7 +5,6 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { ProjectsStore } from '../projects.store';
-import { BreadcrumbsComponent } from '../../../core/components/breadcrumbs/breadcrumbs';
 
 @Component({
   selector: 'app-project-layout',
@@ -18,7 +17,6 @@ import { BreadcrumbsComponent } from '../../../core/components/breadcrumbs/bread
     MatSidenavModule,
     MatListModule,
     MatIconModule,
-    BreadcrumbsComponent,
   ],
   template: `
     <div class="project-container">
@@ -49,7 +47,6 @@ import { BreadcrumbsComponent } from '../../../core/components/breadcrumbs/bread
 
         <mat-sidenav-content>
           <div class="content-wrapper">
-            <app-breadcrumbs></app-breadcrumbs>
             <router-outlet></router-outlet>
           </div>
         </mat-sidenav-content>
@@ -59,7 +56,7 @@ import { BreadcrumbsComponent } from '../../../core/components/breadcrumbs/bread
   styles: [
     `
       .project-container {
-        height: calc(100vh - 64px); /* Subtract Topbar height */
+        height: 100%;
       }
       .sidenav-container {
         height: 100%;

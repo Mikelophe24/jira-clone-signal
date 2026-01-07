@@ -43,7 +43,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
           <mat-card-content>
             <mat-nav-list>
               @for (project of store.projects(); track project.id) {
-              <a mat-list-item [routerLink]="['/project', project.id, 'board']">
+              <a mat-list-item [routerLink]="['/project', project.id]">
                 <mat-icon matListItemIcon>folder</mat-icon>
                 <h3 matListItemTitle>{{ project.name }}</h3>
                 <p matListItemLine>{{ project.key }}</p>

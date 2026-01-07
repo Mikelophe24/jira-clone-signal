@@ -22,4 +22,5 @@ export interface Issue {
   order: number;
   comments?: Comment[];
   isInBacklog?: boolean;
+  dueDate?: string; // ISO string
 }
