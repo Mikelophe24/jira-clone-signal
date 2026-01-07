@@ -39,8 +39,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/my-tasks/my-tasks').then((m) => m.MyTasks),
   },
   {
+    path: 'home',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/home/home').then((m) => m.Home),
+  },
+  {
     path: '',
-    redirectTo: 'projects',
+    redirectTo: 'home',
     pathMatch: 'full',
   },
 ];

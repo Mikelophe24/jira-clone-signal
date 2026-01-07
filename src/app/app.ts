@@ -84,12 +84,12 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
             <div mat-subheader>Workspace</div>
             <a
               mat-list-item
-              routerLink="/projects"
+              routerLink="/home"
               routerLinkActive="active-link"
               [routerLinkActiveOptions]="{ exact: true }"
             >
-              <mat-icon matListItemIcon>home</mat-icon>
-              <span matListItemTitle>Home</span>
+              <mat-icon matListItemIcon>dashboard</mat-icon>
+              <span matListItemTitle>Dashboard</span>
             </a>
             <a mat-list-item routerLink="/my-tasks" routerLinkActive="active-link">
               <mat-icon matListItemIcon>check_circle</mat-icon>
