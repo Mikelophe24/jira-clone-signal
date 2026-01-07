@@ -40,8 +40,6 @@ import { CommonModule, DatePipe } from '@angular/common';
     MatFormFieldModule,
     MatSlideToggleModule,
     BoardFilter,
-    IssueDialog,
-    MembersDialog,
   ],
 
   template: `
@@ -129,6 +127,14 @@ import { CommonModule, DatePipe } from '@angular/common';
                       >
                       {{ issue.dueDate | date : 'd MMM' }}
                     </span>
+                    } @if (getSubtaskStats(issue); as stats) {
+                    <span class="subtasks-count" title="Subtasks">
+                      <mat-icon
+                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                        >check_box</mat-icon
+                      >
+                      {{ stats.completed }}/{{ stats.total }}
+                    </span>
                     }
                   </div>
                   @if (getAssignee(issue.assigneeId); as assignee) {
@@ -202,6 +208,14 @@ import { CommonModule, DatePipe } from '@angular/common';
                       >
                       {{ issue.dueDate | date : 'd MMM' }}
                     </span>
+                    } @if (getSubtaskStats(issue); as stats) {
+                    <span class="subtasks-count" title="Subtasks">
+                      <mat-icon
+                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                        >check_box</mat-icon
+                      >
+                      {{ stats.completed }}/{{ stats.total }}
+                    </span>
                     }
                   </div>
                   @if (getAssignee(issue.assigneeId); as assignee) {
@@ -274,6 +288,14 @@ import { CommonModule, DatePipe } from '@angular/common';
                         >calendar_today</mat-icon
                       >
                       {{ issue.dueDate | date : 'd MMM' }}
+                    </span>
+                    } @if (getSubtaskStats(issue); as stats) {
+                    <span class="subtasks-count" title="Subtasks">
+                      <mat-icon
+                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                        >check_box</mat-icon
+                      >
+                      {{ stats.completed }}/{{ stats.total }}
                     </span>
                     }
                   </div>
@@ -541,6 +563,17 @@ import { CommonModule, DatePipe } from '@angular/common';
         background: #ffebe6;
         font-weight: 600;
       }
+
+      .subtasks-count {
+        margin-left: 8px;
+        font-size: 11px;
+        color: #5e6c84;
+        display: flex;
+        align-items: center;
+        background: rgba(9, 30, 66, 0.04);
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
     `,
   ],
 })
@@ -667,5 +700,11 @@ export class Board implements OnInit {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Ignore time for today check
     return date < today;
+  }
+
+  getSubtaskStats(issue: Issue) {
+    if (!issue.subtasks || issue.subtasks.length === 0) return null;
+    const completed = issue.subtasks.filter((s) => s.completed).length;
+    return { completed, total: issue.subtasks.length };
   }
 }

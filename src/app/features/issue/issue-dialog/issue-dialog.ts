@@ -7,8 +7,9 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { FormsModule } from '@angular/forms';
-import { Issue, IssuePriority, IssueType, Comment } from '../issue.model';
+import { Issue, IssuePriority, IssueType, Comment, Subtask } from '../issue.model';
 import { IssueService } from '../issue.service';
 import { NgFor } from '@angular/common';
 import { ProjectsStore } from '../../projects/projects.store';
@@ -33,6 +34,7 @@ import { DatePipe } from '@angular/common';
     MatIconModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    MatCheckboxModule,
     FormsModule,
     NgFor,
     DatePipe,
@@ -90,6 +92,42 @@ import { DatePipe } from '@angular/common';
           </mat-form-field>
         </div>
       </form>
+
+      <!-- Subtasks Section -->
+      <div class="subtasks-section">
+        <h3>Subtasks</h3>
+        @if (subtasks.length > 0) {
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="calculateProgress()"></div>
+        </div>
+        }
+        <div class="subtask-list">
+          @for (s of subtasks; track s.id) {
+          <div class="subtask-item">
+            <mat-checkbox [checked]="s.completed" (change)="toggleSubtask(s)">
+              <span [class.completed-text]="s.completed">{{ s.title }}</span>
+            </mat-checkbox>
+            <button
+              mat-icon-button
+              color="warn"
+              class="delete-subtask-btn"
+              (click)="deleteSubtask(s.id)"
+            >
+              <mat-icon style="font-size: 16px; height: 16px; width: 16px;">close</mat-icon>
+            </button>
+          </div>
+          }
+        </div>
+        <div class="add-subtask">
+          <input
+            class="subtask-input"
+            placeholder="Add a subtask..."
+            [(ngModel)]="newSubtaskTitle"
+            (keydown.enter)="addSubtask()"
+          />
+          <button mat-button (click)="addSubtask()" [disabled]="!newSubtaskTitle">Add</button>
+        </div>
+      </div>
 
       <!-- Comments Section (Only for existing issues) -->
       @if (isEditing) {
@@ -190,6 +228,66 @@ import { DatePipe } from '@angular/common';
         min-height: 100px;
       }
 
+      .subtasks-section {
+        margin-top: 24px;
+        padding: 0 4px;
+      }
+      .progress-bar {
+        height: 4px;
+        background: #ebecf0;
+        border-radius: 2px;
+        margin-bottom: 12px;
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        background: #0052cc;
+        transition: width 0.3s ease;
+      }
+      .subtask-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .subtask-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        &:hover .delete-subtask-btn {
+          opacity: 1;
+        }
+      }
+      .completed-text {
+        text-decoration: line-through;
+        color: #5e6c84;
+      }
+      .delete-subtask-btn {
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        mat-icon {
+          font-size: 16px;
+        }
+      }
+      .add-subtask {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .subtask-input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #dfe1e6;
+        border-radius: 3px;
+        outline: none;
+        &:focus {
+          border-color: #4c9aff;
+        }
+      }
+
       .comments-section {
         margin-top: 32px;
         border-top: 1px solid #dfe1e6;
@@ -215,6 +313,7 @@ import { DatePipe } from '@angular/common';
         object-fit: cover;
       }
 
+      /* ... rest of styles same as before ... */
       .comment-content {
         flex: 1;
       }
@@ -306,10 +405,12 @@ export class IssueDialog {
   priority: IssuePriority = 'medium';
   assigneeId: string | undefined | null = null;
   comments: any[] = [];
+  subtasks: Subtask[] = [];
   dueDate: Date | null = null;
   isEditing = false;
 
   newCommentText = '';
+  newSubtaskTitle = '';
 
   constructor(
     public dialogRef: MatDialogRef<IssueDialog>,
@@ -324,6 +425,7 @@ export class IssueDialog {
       this.assigneeId = data.issue.assigneeId || null;
       this.comments = data.issue.comments || [];
       this.dueDate = data.issue.dueDate ? new Date(data.issue.dueDate) : null;
+      this.subtasks = data.issue.subtasks || [];
     }
   }
 
@@ -333,6 +435,7 @@ export class IssueDialog {
 
   issueService = inject(IssueService);
 
+  // ... Comment methods same as before ...
   addComment() {
     if (!this.newCommentText.trim()) return;
 
@@ -357,7 +460,6 @@ export class IssueDialog {
         })
         .catch((error) => {
           console.error('Error saving comment:', error);
-          // Optional: Show error message to user
         });
     } else {
       this.comments = updatedComments;
@@ -384,6 +486,61 @@ export class IssueDialog {
     }
   }
 
+  // --- Subtask Methods ---
+
+  addSubtask() {
+    if (!this.newSubtaskTitle.trim()) return;
+
+    const newSubtask: Subtask = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: this.newSubtaskTitle,
+      completed: false,
+    };
+
+    const updatedSubtasks = [...this.subtasks, newSubtask];
+
+    if (this.isEditing && this.data.issue?.id) {
+      this.issueService.updateIssue(this.data.issue.id, { subtasks: updatedSubtasks }).then(() => {
+        this.subtasks = updatedSubtasks;
+        this.newSubtaskTitle = '';
+      });
+    } else {
+      this.subtasks = updatedSubtasks;
+      this.newSubtaskTitle = '';
+    }
+  }
+
+  toggleSubtask(subtask: Subtask) {
+    subtask.completed = !subtask.completed;
+
+    // Create new array trigger change detection if needed, but important for object update
+    const updatedSubtasks = this.subtasks.map((s) => (s.id === subtask.id ? subtask : s));
+
+    if (this.isEditing && this.data.issue?.id) {
+      this.issueService.updateIssue(this.data.issue.id, { subtasks: updatedSubtasks });
+    } else {
+      this.subtasks = updatedSubtasks;
+    }
+  }
+
+  deleteSubtask(subtaskId: string) {
+    const updatedSubtasks = this.subtasks.filter((s) => s.id !== subtaskId);
+
+    if (this.isEditing && this.data.issue?.id) {
+      this.issueService.updateIssue(this.data.issue.id, { subtasks: updatedSubtasks }).then(() => {
+        this.subtasks = updatedSubtasks;
+      });
+    } else {
+      this.subtasks = updatedSubtasks;
+    }
+  }
+
+  calculateProgress(): number {
+    if (this.subtasks.length === 0) return 0;
+    const completed = this.subtasks.filter((s) => s.completed).length;
+    return (completed / this.subtasks.length) * 100;
+  }
+
   save() {
     const result: any = {
       title: this.title,
@@ -391,14 +548,13 @@ export class IssueDialog {
       type: this.type,
       priority: this.priority,
       assigneeId: this.assigneeId || null,
-      statusColumnId: this.data.statusColumnId,
+      statusColumnId: this.data.statusColumnId || this.data.issue?.statusColumnId || 'todo',
       dueDate: this.dueDate ? this.dueDate.toISOString() : null,
     };
 
-    // Only include comments if creating a new issue
-    // For existing issues, comments are saved immediately when added
     if (!this.isEditing) {
       result.comments = this.comments;
+      result.subtasks = this.subtasks;
     }
 
     this.dialogRef.close(result);

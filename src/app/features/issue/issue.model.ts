@@ -8,6 +8,12 @@ export interface Comment {
   createdAt: string; // ISO string
 }
 
+export interface Subtask {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface Issue {
   id: string;
   projectId: string;
@@ -23,4 +29,5 @@ export interface Issue {
   comments?: Comment[];
   isInBacklog?: boolean;
   dueDate?: string; // ISO string
+  subtasks?: Subtask[];
 }
