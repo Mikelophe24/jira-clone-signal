@@ -1,4 +1,4 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthStore } from './core/auth/auth.store';
 import { ProjectsStore } from './features/projects/projects.store';
@@ -203,14 +203,7 @@ export class AppComponent {
   readonly authStore = inject(AuthStore);
   readonly projectsStore = inject(ProjectsStore);
 
-  constructor() {
-    effect(() => {
-      const user = this.authStore.user();
-      this.projectsStore.loadInvites(user ? user.uid : null);
-      // Load projects globally so sidebar is populated
-      this.projectsStore.loadProjects(user ? user.uid : null);
-    });
-  }
+  constructor() {}
 
   accept(invite: any) {
     const user = this.authStore.user();

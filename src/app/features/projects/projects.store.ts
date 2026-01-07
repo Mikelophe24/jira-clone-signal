@@ -14,6 +14,7 @@ import { pipe, tap, switchMap, catchError, of, firstValueFrom } from 'rxjs';
 import { AppUser } from '../../core/models/app-user.model';
 import { withLoadingError } from '../../shared/store-features/with-loading-error.feature';
 import { ErrorNotificationService } from '../../core/services/error-notification.service';
+import { AuthStore } from '../../core/auth/auth.store';
 
 type ProjectsState = {
   projects: Project[];
@@ -226,6 +227,13 @@ export const ProjectsStore = signalStore(
   ),
   withHooks({
     onInit(store) {
+      const authStore = inject(AuthStore);
+      effect(() => {
+        const user = authStore.user();
+        store.loadProjects(user ? user.uid : null);
+        store.loadInvites(user ? user.uid : null);
+      });
+
       effect(() => {
         const project = store.selectedProject();
         if (project && project.memberIds.length > 0) {

@@ -1,10 +1,11 @@
-import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
-import { inject } from '@angular/core';
+import { patchState, signalStore, withMethods, withState, withHooks } from '@ngrx/signals';
+import { inject, effect } from '@angular/core';
 import { IssueService } from '../issue/issue.service';
 import { Issue } from '../issue/issue.model';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe } from 'rxjs';
 import { switchMap, tap } from 'rxjs/operators';
+import { AuthStore } from '../../core/auth/auth.store';
 
 type MyTasksState = {
   issues: Issue[];
@@ -38,5 +39,14 @@ export const MyTasksStore = signalStore(
         })
       )
     ),
-  }))
+  })),
+  withHooks({
+    onInit(store) {
+      const authStore = inject(AuthStore);
+      effect(() => {
+        const user = authStore.user();
+        store.loadMyIssues(user ? user.uid : null);
+      });
+    },
+  })
 );

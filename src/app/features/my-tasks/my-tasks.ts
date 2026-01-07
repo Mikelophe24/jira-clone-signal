@@ -1,4 +1,4 @@
-import { Component, inject, effect } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
@@ -163,12 +163,7 @@ export class MyTasks {
 
   displayedColumns: string[] = ['title', 'projectId', 'priority', 'status', 'dueDate'];
 
-  constructor() {
-    effect(() => {
-      const user = this.authStore.user();
-      this.store.loadMyIssues(user ? user.uid : null);
-    });
-  }
+  constructor() {}
 
   getProjectName(projectId: string): string {
     const project = this.projectsStore.projects().find((p) => p.id === projectId);

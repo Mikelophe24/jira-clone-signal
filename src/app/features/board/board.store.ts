@@ -1,5 +1,12 @@
-import { signalStore, withState, withMethods, patchState, withComputed } from '@ngrx/signals';
-import { inject, computed } from '@angular/core';
+import {
+  signalStore,
+  withState,
+  withMethods,
+  patchState,
+  withComputed,
+  withHooks,
+} from '@ngrx/signals';
+import { inject, computed, effect } from '@angular/core';
 import { IssueService } from '../issue/issue.service';
 import { Issue } from '../issue/issue.model';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
@@ -8,6 +15,7 @@ import { of } from 'rxjs';
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
 import { withLoadingError } from '../../shared/store-features/with-loading-error.feature';
 import { ErrorNotificationService } from '../../core/services/error-notification.service';
+import { AuthStore } from '../../core/auth/auth.store';
 
 type BoardFilter = {
   searchQuery: string;
@@ -95,22 +103,30 @@ export const BoardStore = signalStore(
       updateFilter: (newFilter: Partial<BoardFilter>) => {
         patchState(store, { filter: { ...store.filter(), ...newFilter } });
       },
-      loadIssues: rxMethod<string>(
+      loadIssues: rxMethod<string | null>(
         pipe(
           tap(() => {
             store.setLoading(true);
             store.clearError();
           }),
-          switchMap((projectId) => issueService.getIssues(projectId)),
-          tap((issues) => {
-            patchState(store, { issues });
-            store.setLoading(false);
-          }),
-          catchError((error) => {
-            const errorMessage = error?.message || 'Failed to load issues';
-            store.setError(errorMessage);
-            errorService.showError(errorMessage);
-            return of([]);
+          switchMap((projectId) => {
+            if (!projectId) {
+              patchState(store, { issues: [] });
+              store.setLoading(false);
+              return of([]);
+            }
+            return issueService.getIssues(projectId).pipe(
+              tap((issues) => {
+                patchState(store, { issues });
+                store.setLoading(false);
+              }),
+              catchError((error) => {
+                const errorMessage = error?.message || 'Failed to load issues';
+                store.setError(errorMessage);
+                errorService.showError(errorMessage);
+                return of([]);
+              })
+            );
           })
         )
       ),
@@ -240,5 +256,15 @@ export const BoardStore = signalStore(
         }
       },
     })
-  )
+  ),
+  withHooks({
+    onInit(store) {
+      const authStore = inject(AuthStore);
+      effect(() => {
+        if (!authStore.user()) {
+          store.loadIssues(null);
+        }
+      });
+    },
+  })
 );
