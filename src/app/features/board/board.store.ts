@@ -12,7 +12,7 @@ import { Issue } from '../issue/issue.model';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, tap, switchMap, catchError } from 'rxjs';
 import { of } from 'rxjs';
-import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { withLoadingError } from '../../shared/store-features/with-loading-error.feature';
 import { ErrorNotificationService } from '../../core/services/error-notification.service';
 import { AuthStore } from '../../core/auth/auth.store';
@@ -50,10 +50,9 @@ export const BoardStore = signalStore(
   withLoadingError(),
   withState(initialState),
   withComputed(({ issues, filter }) => {
-    // Helper to filter issues
+    // Hỗ trợ lọc các công việc
     const filteredIssues = computed(() => {
-      const { searchQuery, onlyMyIssues, ignoreResolved, userId, assignee, status, priority } =
-        filter();
+      const { searchQuery, onlyMyIssues, userId, assignee, status, priority } = filter();
       const query = searchQuery.toLowerCase();
 
       return issues().filter((issue) => {
@@ -67,7 +66,7 @@ export const BoardStore = signalStore(
         const matchesStatus = status.length === 0 || status.includes(issue.statusColumnId);
         const matchesPriority = priority.length === 0 || priority.includes(issue.priority);
 
-        // const matchesResolved = ignoreResolved ? issue.status !== 'Done' : true; // Assuming 'Done' is the resolved status
+        // const matchesResolved = ignoreResolved ? issue.status !== 'Done' : true; // Giả định 'Done' là trạng thái đã giải quyết
         const isNotBacklog = !issue.isInBacklog;
 
         return (
@@ -82,7 +81,7 @@ export const BoardStore = signalStore(
     });
 
     const sortedFilteredIssues = computed(() => {
-      // Create a copy before sorting to avoid mutating original state if something goes wrong
+      // Tạo một bản sao trước khi sắp xếp để tránh làm thay đổi trạng thái gốc nếu có lỗi xảy ra
       return [...filteredIssues()].sort((a, b) => a.order - b.order);
     });
 
@@ -135,19 +134,19 @@ export const BoardStore = signalStore(
         const allIssues = [...store.issues()];
 
         if (event.previousContainer === event.container) {
-          // 1. Reorder in Same Column
+          // 1. Sắp xếp lại trong cùng một cột
           const columnIssues = [...event.container.data];
           moveItemInArray(columnIssues, event.previousIndex, event.currentIndex);
 
-          // 2. Recalculate Order for this column
+          // 2. Tính toán lại thứ tự (Order) cho cột này
           const updates: { id: string; data: Partial<Issue> }[] = [];
 
           columnIssues.forEach((issue, index) => {
-            const newOrder = index * 1000; // Spaced out order
+            const newOrder = index * 1000; // Thứ tự được giãn cách (ví dụ nhân với 1000)
             if (issue.order !== newOrder) {
               updates.push({ id: issue.id, data: { order: newOrder } });
 
-              // Update local state copy
+              // Cập nhật bản sao trạng thái cục bộ
               const globalIndex = allIssues.findIndex((i) => i.id === issue.id);
               if (globalIndex > -1) {
                 allIssues[globalIndex] = { ...allIssues[globalIndex], order: newOrder };
@@ -155,31 +154,31 @@ export const BoardStore = signalStore(
             }
           });
 
-          // 3. Optimistic Update
+          // 3. Cập nhật lạc quan (Optimistic Update)
           patchState(store, { issues: allIssues });
 
-          // 4. Batch Update Firestore
+          // 4. Cập nhật hàng loạt (Batch Update) lên Firestore
           if (updates.length > 0) {
             issueService.batchUpdateIssues(updates);
           }
         } else {
-          // 1. Move to Different Column
+          // 1. Di chuyển sang cột khác
 
-          // Remove from old pos ??? No, we just need to update property.
-          // But we also need to know the NEW index in the NEW column to set the correct order.
+          // Xóa khỏi vị trí cũ ??? Không, chúng ta chỉ cần cập nhật thuộc tính.
+          // Nhưng chúng ta cũng cần biết chỉ số (index) MỚI trong cột MỚI để thiết lập thứ tự chính xác.
 
-          const targetColumnIssues = [...event.container.data]; // This is the list BEFORE the drop
-          // Use transferArrayItem to simulate what happened visually so we know the new order
-          // Note: We are working with copies to determine order values
+          const targetColumnIssues = [...event.container.data]; // Đây là danh sách TRƯỚC khi thả
+          // Sử dụng transferArrayItem để mô phỏng những gì đã xảy ra về mặt hình ảnh để chúng ta biết thứ tự mới
+          // Lưu ý: Chúng ta đang làm việc với các bản sao để xác định giá trị thứ tự
           const sourceColumnIssues = [...event.previousContainer.data];
 
-          // We don't actually need to use transferArrayItem on the Store state because we use Computed signals based on statusColumnId.
-          // We just need to figure out the new `order` value for the moved item.
+          // Chúng ta thực sự không cần sử dụng transferArrayItem trên trạng thái Store vì chúng ta sử dụng các Computed signal dựa trên statusColumnId.
+          // Chúng ta chỉ cần tính toán giá trị 'order' mới cho mục đã di chuyển.
 
-          // Insert into target/simulated array to find neighbors
+          // Chèn vào mảng mục tiêu/mô phỏng để tìm các mục lân cận
           targetColumnIssues.splice(event.currentIndex, 0, movedIssue);
 
-          // Calculate new order based on neighbors
+          // Tính toán thứ tự mới dựa trên các mục lân cận
           let newOrder = 0;
           const prevItem = targetColumnIssues[event.currentIndex - 1];
           const nextItem = targetColumnIssues[event.currentIndex + 1];
@@ -194,7 +193,7 @@ export const BoardStore = signalStore(
             newOrder = (prevItem.order + nextItem.order) / 2;
           }
 
-          // Update local state
+          // Cập nhật trạng thái cục bộ
           const issueIndex = allIssues.findIndex((i) => i.id === movedIssue.id);
           if (issueIndex > -1) {
             const updatedIssue = {
@@ -206,7 +205,7 @@ export const BoardStore = signalStore(
             patchState(store, { issues: allIssues });
           }
 
-          // Firestore Update
+          // Cập nhật lên Firestore
           issueService.updateIssue(movedIssue.id, {
             statusColumnId: newStatus,
             order: newOrder,
@@ -234,10 +233,10 @@ export const BoardStore = signalStore(
         }
       },
       updateIssue: async (issueId: string, updates: Partial<Issue>) => {
-        // Save original state for potential rollback
+        // Lưu trạng thái gốc để có thể hoàn tác (rollback) nếu cần
         const originalIssues = [...store.issues()];
 
-        // Optimistic Update
+        // Cập nhật lạc quan (Optimistic Update)
         const allIssues = [...originalIssues];
         const issueIndex = allIssues.findIndex((i) => i.id === issueId);
         if (issueIndex > -1) {
@@ -251,12 +250,13 @@ export const BoardStore = signalStore(
           const errorMessage = err?.message || 'Failed to update issue';
           store.setError(errorMessage);
           errorService.showError(errorMessage);
-          // Revert optimistic update on error
+          // Hoàn tác cập nhật lạc quan nếu xảy ra lỗi
           patchState(store, { issues: originalIssues });
         }
       },
     })
   ),
+
   withHooks({
     onInit(store) {
       const authStore = inject(AuthStore);
