@@ -13,9 +13,25 @@ export const routes: Routes = [
       import('./features/projects/project-list/project-list').then((m) => m.ProjectList),
   },
   {
-    path: 'project/:projectId/board',
+    path: 'project/:projectId',
     canActivate: [authGuard],
-    loadComponent: () => import('./features/board/board/board').then((m) => m.Board),
+    loadComponent: () =>
+      import('./features/projects/project-layout/project-layout').then((m) => m.ProjectLayout),
+    children: [
+      {
+        path: 'board',
+        loadComponent: () => import('./features/board/board/board').then((m) => m.Board),
+      },
+      {
+        path: 'backlog',
+        loadComponent: () => import('./features/board/backlog/backlog').then((m) => m.Backlog),
+      },
+      {
+        path: '',
+        redirectTo: 'board',
+        pathMatch: 'full',
+      },
+    ],
   },
   {
     path: '',

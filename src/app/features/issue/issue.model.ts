@@ -21,4 +21,5 @@ export interface Issue {
   assigneeId?: string;
   order: number;
   comments?: Comment[];
+  isInBacklog?: boolean;
 }

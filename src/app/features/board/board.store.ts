@@ -58,7 +58,16 @@ export const BoardStore = signalStore(
         const matchesPriority = priority.length === 0 || priority.includes(issue.priority);
 
         // const matchesResolved = ignoreResolved ? issue.status !== 'Done' : true; // Assuming 'Done' is the resolved status
-        return matchesSearch && matchesUser && matchesAssignee && matchesStatus && matchesPriority;
+        const isNotBacklog = !issue.isInBacklog;
+
+        return (
+          matchesSearch &&
+          matchesUser &&
+          matchesAssignee &&
+          matchesStatus &&
+          matchesPriority &&
+          isNotBacklog
+        );
       });
     });
 

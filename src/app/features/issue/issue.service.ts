@@ -45,4 +45,12 @@ export class IssueService {
     });
     return batch.commit();
   }
+
+  moveToBacklog(issueId: string) {
+    return this.updateIssue(issueId, { isInBacklog: true });
+  }
+
+  moveToBoard(issueId: string) {
+    return this.updateIssue(issueId, { isInBacklog: false });
+  }
 }

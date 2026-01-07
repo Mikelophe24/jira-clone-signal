@@ -17,7 +17,7 @@ export interface IssueDialogData {
 }
 
 import { AuthStore } from '../../../core/auth/auth.store'; // Adjust path if needed
-import { DatePipe } from '@angular/common'; // We need to import DatePipe or add it to imports
+import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-issue-dialog',
