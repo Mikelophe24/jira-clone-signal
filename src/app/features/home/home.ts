@@ -36,14 +36,6 @@ import { Router, RouterLink } from '@angular/router';
           </mat-card-content>
         </mat-card>
 
-        <!-- Assigned Tasks -->
-        <mat-card class="stat-card">
-          <mat-card-content>
-            <div class="stat-label">Assigned Tasks</div>
-            <div class="stat-value">{{ myTasksStore.issues().length }}</div>
-          </mat-card-content>
-        </mat-card>
-
         <!-- Completed Tasks -->
         <mat-card class="stat-card">
           <mat-card-content>

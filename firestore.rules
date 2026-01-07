@@ -57,33 +57,22 @@ service cloud.firestore {
       allow create: if signedIn() && isValidNewProject();
       
       // Update:
-      // 1. Members can update basic fields (name, key)
-      // 2. Owner has full write (can change memberIds, etc)
-      // 3. Invited users can update ONLY to remove themselves from invitedMemberIds and add to memberIds (Accept) or remove from invitedMemberIds (Reject)
-      //    For simplicity in this MVP: We allow update if you are a member OR invited. 
-      //    Ideally we would strictly validate *what* you are changing (e.g. only moving your own ID).
+      // 1. Owner has full write (except changing ownerId to keep it simple)
+      // 2. Members/Invited users can update ONLY non-restricted fields (cannot change name, key, or ownerId)
       allow update: if signedIn() && (
         resource.data.ownerId == request.auth.uid || 
         (
-          // Existing members can update (but mostly we want them to not change critical auth fields, dealt with in logic or tighter rules later)
-          resource.data.memberIds.hasAny([request.auth.uid]) 
-        ) ||
-        (
-          // Invited users can update (to accept/reject)
-          resource.data.invitedMemberIds.hasAny([request.auth.uid])
+          (
+            resource.data.memberIds.hasAny([request.auth.uid]) ||
+            (resource.data.invitedMemberIds != null && resource.data.invitedMemberIds.hasAny([request.auth.uid]))
+          ) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'key', 'ownerId'])
         )
       );
       
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    match /boards/{boardId} {
-      allow read: if signedIn() && isProjectMember(resource.data.projectId);
-      allow create: if signedIn() && isProjectMember(request.resource.data.projectId);
-      // Prevent changing project ID
-      allow update: if signedIn() && isProjectMember(resource.data.projectId) && notChangingProjectId();
-      allow delete: if signedIn() && isProjectMember(resource.data.projectId);
-    }
 
     match /issues/{issueId} {
       allow read: if signedIn() && (
@@ -98,9 +87,22 @@ service cloud.firestore {
       allow update: if signedIn() 
                     && isProjectMember(resource.data.projectId)
                     && notChangingProjectId()
-                    && isValidIssue();
+                    && (
+                      // 1. Assignee, Reporter hoặc Project Owner có quyền sửa mọi thứ
+                      (
+                        resource.data.assigneeId == request.auth.uid || 
+                        resource.data.reporterId == request.auth.uid || 
+                        isProjectOwner(resource.data.projectId)
+                      ) ||
+                      // 2. Member bình thường CHỈ được phép đổi status và order (kéo thả)
+                      // Chặn thay đổi title, description, priority, type...
+                      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['title', 'description', 'type', 'priority', 'reporterId', 'key'])
+                    );
 
-      allow delete: if signedIn() && isProjectMember(resource.data.projectId);
+      allow delete: if signedIn() && (
+        resource.data.reporterId == request.auth.uid || 
+        isProjectOwner(resource.data.projectId)
+      );
     }
 
     match /users/{uid} {

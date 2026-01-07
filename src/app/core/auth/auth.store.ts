@@ -5,6 +5,8 @@ import { User } from '@angular/fire/auth';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, tap, switchMap } from 'rxjs';
 
+import { Router } from '@angular/router';
+
 type AuthState = {
   user: User | null;
   loading: boolean;
@@ -20,7 +22,7 @@ const initialState: AuthState = {
 export const AuthStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  withMethods((store, authService = inject(AuthService)) => ({
+  withMethods((store, authService = inject(AuthService), router = inject(Router)) => ({
     login: async () => {
       patchState(store, { loading: true, error: null });
       try {
@@ -57,6 +59,7 @@ export const AuthStore = signalStore(
     logout: async () => {
       await authService.logout();
       patchState(store, { user: null });
+      router.navigate(['/login']);
     },
     _setUser: (user: User | null) => {
       // Internal use

@@ -36,8 +36,8 @@ import { Issue } from '../issue/issue.model';
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>Status</th>
           <td mat-cell *matCellDef="let issue">
-            <span class="status-badge" [ngClass]="issue.status">
-              {{ issue.status || 'todo' | uppercase }}
+            <span class="status-badge" [ngClass]="issue.statusColumnId">
+              {{ formatStatus(issue.statusColumnId) }}
             </span>
           </td>
         </ng-container>
@@ -126,7 +126,7 @@ import { Issue } from '../issue/issue.model';
         background: #dfe1e6;
         color: #42526e;
       }
-      .status-badge.inprogress {
+      .status-badge.in-progress {
         background: #deebff;
         color: #0052cc;
       }
@@ -200,6 +200,19 @@ export class MyTasks {
         return '#0065ff';
       default:
         return '#172b4d';
+    }
+  }
+
+  formatStatus(statusId: string): string {
+    switch (statusId) {
+      case 'todo':
+        return 'TODO';
+      case 'in-progress':
+        return 'IN PROGRESS';
+      case 'done':
+        return 'DONE';
+      default:
+        return statusId.toUpperCase();
     }
   }
 }
