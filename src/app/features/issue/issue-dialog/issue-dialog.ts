@@ -11,7 +11,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { FormsModule } from '@angular/forms';
 import { Issue, IssuePriority, IssueType, Comment, Subtask } from '../issue.model';
 import { IssueService } from '../issue.service';
-import { NgFor } from '@angular/common';
+
 import { ProjectsStore } from '../../projects/projects.store';
 
 export interface IssueDialogData {
@@ -36,7 +36,6 @@ import { DatePipe } from '@angular/common';
     MatNativeDateModule,
     MatCheckboxModule,
     FormsModule,
-    NgFor,
     DatePipe,
   ],
   template: `
@@ -78,9 +77,11 @@ import { DatePipe } from '@angular/common';
             <mat-label>Assignee</mat-label>
             <mat-select [(ngModel)]="assigneeId" name="assignee">
               <mat-option [value]="null">Unassigned</mat-option>
-              <mat-option *ngFor="let member of projectsStore.members()" [value]="member.uid">
+              @for (member of projectsStore.members(); track member.uid) {
+              <mat-option [value]="member.uid">
                 {{ member.displayName }}
               </mat-option>
+              }
             </mat-select>
           </mat-form-field>
 

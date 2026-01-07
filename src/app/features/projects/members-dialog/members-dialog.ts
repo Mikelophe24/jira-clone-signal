@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { FormsModule } from '@angular/forms';
 import { ProjectsStore } from '../projects.store';
-import { NgFor } from '@angular/common';
+
 import { AuthStore } from '../../../core/auth/auth.store';
 
 @Component({
@@ -24,7 +24,6 @@ import { AuthStore } from '../../../core/auth/auth.store';
     MatListModule,
     MatTooltipModule,
     FormsModule,
-    NgFor,
   ],
   template: `
     <h2 mat-dialog-title>Manage Members</h2>
@@ -32,7 +31,8 @@ import { AuthStore } from '../../../core/auth/auth.store';
       <!-- List Existing Members -->
       <mat-list>
         <h3 mat-subheader>Current Members</h3>
-        <mat-list-item *ngFor="let member of store.members()">
+        @for (member of store.members(); track member.uid) {
+        <mat-list-item>
           <mat-icon matListItemIcon>person</mat-icon>
           <div matListItemTitle>{{ member.displayName || member.email }}</div>
           <div matListItemLine>{{ member.email }}</div>
@@ -56,6 +56,7 @@ import { AuthStore } from '../../../core/auth/auth.store';
             }
           </div>
         </mat-list-item>
+        }
       </mat-list>
 
       <div class="divider"></div>
