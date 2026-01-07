@@ -47,6 +47,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
                 <mat-icon matListItemIcon>folder</mat-icon>
                 <h3 matListItemTitle>{{ project.name }}</h3>
                 <p matListItemLine>{{ project.key }}</p>
+                <p matListItemLine class="owner-line">
+                  Created by: {{ getOwnerName(project.ownerId) }}
+                </p>
                 @if (authStore.user()?.uid === project.ownerId) {
                 <button
                   mat-icon-button
@@ -138,6 +141,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
         color: #888;
         font-style: italic;
       }
+      .owner-line {
+        font-size: 12px;
+        color: #888;
+      }
     `,
   ],
 })
@@ -153,6 +160,15 @@ export class ProjectList {
         this.store.loadProjects(user.uid);
       }
     });
+  }
+
+  getOwnerName(ownerId: string): string {
+    const currentUser = this.authStore.user();
+    if (currentUser?.uid === ownerId) {
+      return 'Me';
+    }
+    const owner = this.store.projectOwners().find((u) => u.uid === ownerId);
+    return owner?.displayName || 'Unknown';
   }
 
   createProject(name: string, key: string) {

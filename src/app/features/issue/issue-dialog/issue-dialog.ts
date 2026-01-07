@@ -4,8 +4,10 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
+import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { Issue, IssuePriority, IssueType, Comment } from '../issue.model';
+import { IssueService } from '../issue.service';
 import { NgFor } from '@angular/common';
 import { ProjectsStore } from '../../projects/projects.store';
 
@@ -26,6 +28,7 @@ import { DatePipe } from '@angular/common'; // We need to import DatePipe or add
     MatInputModule,
     MatButtonModule,
     MatSelectModule,
+    MatIconModule,
     FormsModule,
     NgFor,
     DatePipe,
@@ -92,6 +95,17 @@ import { DatePipe } from '@angular/common'; // We need to import DatePipe or add
               <div class="comment-header">
                 <span class="comment-author">{{ user.displayName }}</span>
                 <span class="comment-date">{{ comment.createdAt | date : 'short' }}</span>
+                @if (authStore.user()?.uid === comment.userId) {
+                <button
+                  mat-icon-button
+                  class="delete-comment-btn"
+                  (click)="deleteComment(comment.id)"
+                >
+                  <mat-icon style="font-size: 16px; height: 16px; width: 16px; line-height: 16px;"
+                    >delete</mat-icon
+                  >
+                </button>
+                }
               </div>
               <div class="comment-text">{{ comment.content }}</div>
             </div>
@@ -199,6 +213,28 @@ import { DatePipe } from '@angular/common'; // We need to import DatePipe or add
         margin-bottom: 4px;
       }
 
+      .delete-comment-btn {
+        opacity: 0;
+        transition: opacity 0.2s ease-in-out;
+        margin-left: auto;
+        width: 24px !important;
+        height: 24px !important;
+        line-height: 24px !important;
+        padding: 0 !important;
+
+        mat-icon {
+          color: #6b778c;
+        }
+
+        &:hover mat-icon {
+          color: #de350b;
+        }
+      }
+
+      .comment-item:hover .delete-comment-btn {
+        opacity: 1;
+      }
+
       .comment-author {
         font-weight: 500;
         font-size: 13px;
@@ -280,6 +316,8 @@ export class IssueDialog {
     return this.projectsStore.members().find((m) => m.uid === userId);
   }
 
+  issueService = inject(IssueService);
+
   addComment() {
     if (!this.newCommentText.trim()) return;
 
@@ -293,19 +331,60 @@ export class IssueDialog {
       createdAt: new Date().toISOString(),
     };
 
-    this.comments = [...this.comments, newComment];
-    this.newCommentText = '';
+    const updatedComments = [...this.comments, newComment];
+
+    if (this.isEditing && this.data.issue?.id) {
+      this.issueService
+        .updateIssue(this.data.issue.id, { comments: updatedComments })
+        .then(() => {
+          this.comments = updatedComments;
+          this.newCommentText = '';
+        })
+        .catch((error) => {
+          console.error('Error saving comment:', error);
+          // Optional: Show error message to user
+        });
+    } else {
+      this.comments = updatedComments;
+      this.newCommentText = '';
+    }
+  }
+
+  deleteComment(commentId: string) {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+
+    const updatedComments = this.comments.filter((c) => c.id !== commentId);
+
+    if (this.isEditing && this.data.issue?.id) {
+      this.issueService
+        .updateIssue(this.data.issue.id, { comments: updatedComments })
+        .then(() => {
+          this.comments = updatedComments;
+        })
+        .catch((error) => {
+          console.error('Error deleting comment:', error);
+        });
+    } else {
+      this.comments = updatedComments;
+    }
   }
 
   save() {
-    this.dialogRef.close({
+    const result: any = {
       title: this.title,
       description: this.description,
       type: this.type,
       priority: this.priority,
       assigneeId: this.assigneeId || null,
       statusColumnId: this.data.statusColumnId,
-      comments: this.comments, // Return updated comments
-    });
+    };
+
+    // Only include comments if creating a new issue
+    // For existing issues, comments are saved immediately when added
+    if (!this.isEditing) {
+      result.comments = this.comments;
+    }
+
+    this.dialogRef.close(result);
   }
 }

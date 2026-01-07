@@ -39,11 +39,48 @@ export class ProjectsService {
   }
 
   addMemberToProject(projectId: string, newMemberId: string, currentMemberIds: string[]) {
+    // Deprecated in favor of inviteUserToProject but keeping for immediate adds if needed
     const docRef = doc(this.firestore, 'projects', projectId);
-    // Avoid duplicates
     if (currentMemberIds.includes(newMemberId)) return Promise.resolve();
-
     const newMemberIds = [...currentMemberIds, newMemberId];
+    return updateDoc(docRef, { memberIds: newMemberIds });
+  }
+
+  inviteUserToProject(projectId: string, userId: string, currentInvitedIds: string[] = []) {
+    const docRef = doc(this.firestore, 'projects', projectId);
+    if (currentInvitedIds.includes(userId)) return Promise.resolve();
+    const newInvitedIds = [...currentInvitedIds, userId];
+    return updateDoc(docRef, { invitedMemberIds: newInvitedIds });
+  }
+
+  getPendingInvites(userId: string): Observable<Project[]> {
+    const q = query(this.projectsCollection, where('invitedMemberIds', 'array-contains', userId));
+    return collectionData(q, { idField: 'id' }) as Observable<Project[]>;
+  }
+
+  async acceptInvite(project: Project, userId: string) {
+    const docRef = doc(this.firestore, 'projects', project.id);
+
+    // Remove from invited
+    const newInvitedIds = (project.invitedMemberIds || []).filter((id) => id !== userId);
+    // Add to members
+    const newMemberIds = [...project.memberIds, userId];
+
+    return updateDoc(docRef, {
+      invitedMemberIds: newInvitedIds,
+      memberIds: newMemberIds,
+    });
+  }
+
+  rejectInvite(project: Project, userId: string) {
+    const docRef = doc(this.firestore, 'projects', project.id);
+    const newInvitedIds = (project.invitedMemberIds || []).filter((id) => id !== userId);
+    return updateDoc(docRef, { invitedMemberIds: newInvitedIds });
+  }
+
+  removeMemberFromProject(projectId: string, memberIdToRemove: string, currentMemberIds: string[]) {
+    const docRef = doc(this.firestore, 'projects', projectId);
+    const newMemberIds = currentMemberIds.filter((id) => id !== memberIdToRemove);
     return updateDoc(docRef, { memberIds: newMemberIds });
   }
 }
