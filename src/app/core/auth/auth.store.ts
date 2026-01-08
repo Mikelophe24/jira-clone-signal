@@ -28,17 +28,29 @@ export const AuthStore = signalStore(
       login: async () => {
         store.setLoading(true);
         store.clearError();
+
+        const onFocus = () => {
+          store.setLoading(false);
+        };
+        window.addEventListener('focus', onFocus);
+
         try {
           console.log('Attempting to login with Google...');
           await authService.loginWithGoogle();
           console.log('Login successful');
           errorService.showSuccess('Welcome! Login successful');
-          store.setLoading(false);
         } catch (error: any) {
-          const errorMessage = error?.message || 'Login failed';
-          console.error('Login failed', error);
-          store.setError(errorMessage);
-          errorService.showError(errorMessage);
+          if (error.code === 'auth/popup-closed-by-user') {
+            console.log('Popup closed by user');
+          } else {
+            const errorMessage = error?.message || 'Login failed';
+            console.error('Login failed', error);
+            store.setError(errorMessage);
+            errorService.showError(errorMessage);
+          }
+        } finally {
+          window.removeEventListener('focus', onFocus);
+          store.setLoading(false);
         }
       },
       loginEmail: async (email: string, pass: string) => {

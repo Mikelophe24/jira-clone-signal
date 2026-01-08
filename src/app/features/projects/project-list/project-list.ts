@@ -130,6 +130,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
       .create-card {
         width: 100%;
       }
+
       .create-form {
         display: flex;
         flex-direction: column;
@@ -144,6 +145,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
       .owner-line {
         font-size: 12px;
         color: #888;
+      }
+      a.mat-mdc-list-item {
+        border-radius: 7px !important;
       }
     `,
   ],

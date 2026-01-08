@@ -15,7 +15,7 @@ import { Router, RouterLink } from '@angular/router';
   template: `
     <div class="home-container">
       <div class="header">
-        <h1>Home</h1>
+        <h1>Dashboard</h1>
       </div>
 
       <!-- Stats Row -->

@@ -12,6 +12,7 @@ import { Issue } from '../issue/issue.model';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { pipe, tap, switchMap, catchError } from 'rxjs';
 import { of } from 'rxjs';
+import { produce } from 'immer';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { withLoadingError } from '../../shared/store-features/with-loading-error.feature';
 import { ErrorNotificationService } from '../../core/services/error-notification.service';
@@ -100,7 +101,11 @@ export const BoardStore = signalStore(
       errorService: ErrorNotificationService = inject(ErrorNotificationService)
     ) => ({
       updateFilter: (newFilter: Partial<BoardFilter>) => {
-        patchState(store, { filter: { ...store.filter(), ...newFilter } });
+        patchState(store, (state) =>
+          produce(state, (draft) => {
+            Object.assign(draft.filter, newFilter);
+          })
+        );
       },
       loadIssues: rxMethod<string | null>(
         pipe(
@@ -145,20 +150,23 @@ export const BoardStore = signalStore(
             const newOrder = index * 1000; // Thứ tự được giãn cách (ví dụ nhân với 1000)
             if (issue.order !== newOrder) {
               updates.push({ id: issue.id, data: { order: newOrder } });
-
-              // Cập nhật bản sao trạng thái cục bộ
-              const globalIndex = allIssues.findIndex((i) => i.id === issue.id);
-              if (globalIndex > -1) {
-                allIssues[globalIndex] = { ...allIssues[globalIndex], order: newOrder };
-              }
             }
           });
 
           // 3. Cập nhật lạc quan (Optimistic Update)
-          patchState(store, { issues: allIssues });
-
-          // 4. Cập nhật hàng loạt (Batch Update) lên Firestore
           if (updates.length > 0) {
+            patchState(store, (state) =>
+              produce(state, (draft) => {
+                updates.forEach((update) => {
+                  const issue = draft.issues.find((i) => i.id === update.id);
+                  if (issue) {
+                    issue.order = update.data.order!;
+                  }
+                });
+              })
+            );
+
+            // 4. Cập nhật hàng loạt (Batch Update) lên Firestore
             issueService.batchUpdateIssues(updates);
           }
         } else {
@@ -194,16 +202,15 @@ export const BoardStore = signalStore(
           }
 
           // Cập nhật trạng thái cục bộ
-          const issueIndex = allIssues.findIndex((i) => i.id === movedIssue.id);
-          if (issueIndex > -1) {
-            const updatedIssue = {
-              ...allIssues[issueIndex],
-              statusColumnId: newStatus,
-              order: newOrder,
-            };
-            allIssues[issueIndex] = updatedIssue;
-            patchState(store, { issues: allIssues });
-          }
+          patchState(store, (state) =>
+            produce(state, (draft) => {
+              const issue = draft.issues.find((i) => i.id === movedIssue.id);
+              if (issue) {
+                issue.statusColumnId = newStatus;
+                issue.order = newOrder;
+              }
+            })
+          );
 
           // Cập nhật lên Firestore
           issueService.updateIssue(movedIssue.id, {
@@ -237,12 +244,15 @@ export const BoardStore = signalStore(
         const originalIssues = [...store.issues()];
 
         // Cập nhật lạc quan (Optimistic Update)
-        const allIssues = [...originalIssues];
-        const issueIndex = allIssues.findIndex((i) => i.id === issueId);
-        if (issueIndex > -1) {
-          allIssues[issueIndex] = { ...allIssues[issueIndex], ...updates };
-          patchState(store, { issues: allIssues });
-        }
+        // Cập nhật lạc quan (Optimistic Update)
+        patchState(store, (state) =>
+          produce(state, (draft) => {
+            const issue = draft.issues.find((i) => i.id === issueId);
+            if (issue) {
+              Object.assign(issue, updates);
+            }
+          })
+        );
 
         try {
           await issueService.updateIssue(issueId, updates);

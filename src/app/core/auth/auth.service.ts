@@ -21,7 +21,11 @@ export class AuthService {
   private firestore = inject(Firestore);
 
   async loginWithGoogle() {
-    const cred = await signInWithPopup(this.auth, new GoogleAuthProvider());
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account',
+    });
+    const cred = await signInWithPopup(this.auth, provider);
     await this.syncUserToFirestore(cred.user);
     return cred;
   }

@@ -9,6 +9,7 @@ import {
   doc,
   deleteDoc,
   writeBatch,
+  getDocs,
 } from 'firebase/firestore';
 import { Issue } from './issue.model';
 import { Observable } from 'rxjs';
@@ -64,5 +65,21 @@ export class IssueService {
 
   moveToBoard(issueId: string) {
     return this.updateIssue(issueId, { isInBacklog: false });
+  }
+
+  async unassignUserFromProjectIssues(projectId: string, userId: string) {
+    const q = query(
+      this.issuesCollection,
+      where('projectId', '==', projectId),
+      where('assigneeId', '==', userId)
+    );
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+
+    const updates = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: { assigneeId: null as any },
+    }));
+    return this.batchUpdateIssues(updates);
   }
 }

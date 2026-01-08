@@ -8,8 +8,10 @@ import {
 } from '@ngrx/signals';
 import { inject, computed, effect } from '@angular/core';
 import { ProjectsService } from './projects.service';
+import { IssueService } from '../issue/issue.service';
 import { Project } from './project.model';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { Router } from '@angular/router';
 import { pipe, tap, switchMap, catchError, of, firstValueFrom } from 'rxjs';
 import { AppUser } from '../../core/models/app-user.model';
 import { withLoadingError } from '../../shared/store-features/with-loading-error.feature';
@@ -45,6 +47,7 @@ export const ProjectsStore = signalStore(
     (
       store,
       projectsService = inject(ProjectsService),
+      issueService = inject(IssueService),
       errorService = inject(ErrorNotificationService)
     ) => ({
       loadProjects: rxMethod<string | null>(
@@ -202,6 +205,9 @@ export const ProjectsStore = signalStore(
         try {
           const project = store.selectedProject();
           if (project) {
+            // Unassign issues from this member in this project
+            await issueService.unassignUserFromProjectIssues(project.id, memberId);
+
             await projectsService.removeMemberFromProject(project.id, memberId, project.memberIds);
 
             // Update local state
@@ -228,6 +234,8 @@ export const ProjectsStore = signalStore(
   withHooks({
     onInit(store) {
       const authStore = inject(AuthStore);
+      const router = inject(Router);
+
       effect(() => {
         const user = authStore.user();
         store.loadProjects(user ? user.uid : null);
@@ -240,6 +248,35 @@ export const ProjectsStore = signalStore(
           store.loadMembers(project.memberIds);
         } else {
           patchState(store, { members: [] });
+        }
+      });
+
+      // Security/Real-time check:
+      // If the user has a selectedProject (is viewing one), but that project disappears from their list
+      // (kicked or deleted), alert them and redirect to project list.
+      effect(() => {
+        const projects = store.projects();
+        const selectedId = store.selectedProjectId();
+        const isLoading = store.loading();
+
+        if (!isLoading && selectedId) {
+          // Check if project exists in user's access list
+          const stillHasAccess = projects.some((p) => p.id === selectedId);
+
+          if (!stillHasAccess) {
+            // Access lost (kicked or project deleted)
+            // Use setTimeout to avoid 'ExpressionChangedAfterItHasBeenCheckedError'
+            // and allow UI to stabilize if this is a transient state
+            setTimeout(() => {
+              const currentProjects = store.projects();
+              // Re-verify condition
+              if (!currentProjects.some((p) => p.id === selectedId)) {
+                alert('Project does not exist anymore ');
+                patchState(store, { selectedProjectId: null });
+                router.navigate(['/projects']);
+              }
+            }, 200);
+          }
         }
       });
     },
