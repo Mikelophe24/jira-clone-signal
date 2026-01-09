@@ -120,6 +120,7 @@ export class MembersDialog {
   get currentUser() {
     return this.authStore.user();
   }
+  //dùng get để khi gọi ra ko phải ()
 
   get isOwner() {
     const project = this.store.selectedProject();
@@ -151,6 +152,7 @@ export class MembersDialog {
   async leaveProject(memberId: string) {
     if (!confirm('Are you sure you want to leave this project?')) return;
     try {
+      
       await this.store.removeMember(memberId);
       this.dialogRef.close();
       this.router.navigate(['/projects']);

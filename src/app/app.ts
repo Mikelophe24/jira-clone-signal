@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthStore } from './core/auth/auth.store';
 import { ProjectsStore } from './features/projects/projects.store';
@@ -32,6 +32,11 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
   template: `
     <div class="app-container">
       <mat-toolbar color="primary" class="main-toolbar">
+        @if (authStore.user()) {
+        <button mat-icon-button (click)="toggleSidebar()" title="Toggle Sidebar">
+          <mat-icon>menu</mat-icon>
+        </button>
+        }
         <span>Jira Clone</span>
         <span class="spacer"></span>
 
@@ -79,9 +84,8 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
 
       <mat-sidenav-container class="sidenav-container">
         @if (authStore.user()) {
-        <mat-sidenav mode="side" opened class="main-sidenav">
+        <mat-sidenav mode="side" [opened]="sidebarOpened()" class="main-sidenav">
           <mat-nav-list>
-            <div mat-subheader>Workspace</div>
             <a
               mat-list-item
               routerLink="/home"
@@ -203,7 +207,12 @@ export class AppComponent {
   readonly authStore = inject(AuthStore);
   readonly projectsStore = inject(ProjectsStore);
 
-  constructor() {}
+  // Sidebar state
+  readonly sidebarOpened = signal<boolean>(true);
+
+  toggleSidebar() {
+    this.sidebarOpened.set(!this.sidebarOpened());
+  }
 
   accept(invite: any) {
     const user = this.authStore.user();

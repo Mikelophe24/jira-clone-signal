@@ -40,12 +40,15 @@ export const AuthStore = signalStore(
           console.log('Login successful');
           errorService.showSuccess('Welcome! Login successful');
         } catch (error: any) {
-          if (error.code === 'auth/popup-closed-by-user') {
+          if (
+            error.code === 'auth/popup-closed-by-user' ||
+            error.code === 'auth/cancelled-popup-request'
+          ) {
             console.log('Popup closed by user');
           } else {
             const errorMessage = error?.message || 'Login failed';
             console.error('Login failed', error);
-            store.setError(errorMessage);
+            // store.setError(errorMessage);
             errorService.showError(errorMessage);
           }
         } finally {
@@ -62,7 +65,7 @@ export const AuthStore = signalStore(
           store.setLoading(false);
         } catch (error: any) {
           const errorMessage = error?.message || 'Login failed';
-          store.setError(errorMessage);
+          // store.setError(errorMessage);
           errorService.showError(errorMessage);
         }
       },
@@ -75,7 +78,7 @@ export const AuthStore = signalStore(
           store.setLoading(false);
         } catch (error: any) {
           const errorMessage = error?.message || 'Registration failed';
-          store.setError(errorMessage);
+          // store.setError(errorMessage);
           errorService.showError(errorMessage);
         }
       },
@@ -87,7 +90,7 @@ export const AuthStore = signalStore(
           router.navigate(['/login']);
         } catch (error: any) {
           const errorMessage = error?.message || 'Logout failed';
-          store.setError(errorMessage);
+          // store.setError(errorMessage);
           errorService.showError(errorMessage);
         }
       },

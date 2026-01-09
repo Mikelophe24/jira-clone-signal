@@ -53,14 +53,6 @@ export class ProjectsService {
     return runInInjectionContext(this.injector, () => collectionData(q));
   }
 
-  addMemberToProject(projectId: string, newMemberId: string, currentMemberIds: string[]) {
-    // Deprecated in favor of inviteUserToProject but keeping for immediate adds if needed
-    const docRef = doc(this.firestore, 'projects', projectId);
-    if (currentMemberIds.includes(newMemberId)) return Promise.resolve();
-    const newMemberIds = [...currentMemberIds, newMemberId];
-    return updateDoc(docRef, { memberIds: newMemberIds });
-  }
-
   inviteUserToProject(projectId: string, userId: string, currentInvitedIds: string[] = []) {
     const docRef = doc(this.firestore, 'projects', projectId);
     if (currentInvitedIds.includes(userId)) return Promise.resolve();

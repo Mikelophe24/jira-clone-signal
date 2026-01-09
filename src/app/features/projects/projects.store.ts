@@ -24,7 +24,6 @@ type ProjectsState = {
   members: AppUser[];
   pendingInvites: Project[]; // Projects where user is invited
   selectedProjectId: string | null;
-  filter: string;
 };
 
 const initialState: ProjectsState = {
@@ -33,7 +32,6 @@ const initialState: ProjectsState = {
   members: [],
   pendingInvites: [],
   selectedProjectId: null, // Could be loaded from local storage
-  filter: '',
 };
 
 export const ProjectsStore = signalStore(
@@ -74,7 +72,6 @@ export const ProjectsStore = signalStore(
               catchError((err) => {
                 const errorMessage = err?.message || 'Failed to load projects';
                 console.error('Error loading projects:', err);
-                store.setError(errorMessage);
                 errorService.showError(errorMessage);
                 return of([]);
               })
@@ -128,7 +125,6 @@ export const ProjectsStore = signalStore(
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to delete project';
           console.error('Failed to delete project', err);
-          store.setError(errorMessage);
           errorService.showError(errorMessage);
         }
       },
@@ -148,7 +144,6 @@ export const ProjectsStore = signalStore(
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to accept invite';
           console.error('Failed to accept invite', err);
-          store.setError(errorMessage);
           errorService.showError(errorMessage);
         }
       },
@@ -162,7 +157,6 @@ export const ProjectsStore = signalStore(
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to reject invite';
           console.error('Failed to reject invite', err);
-          store.setError(errorMessage);
           errorService.showError(errorMessage);
         }
       },
@@ -195,7 +189,6 @@ export const ProjectsStore = signalStore(
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to invite user';
           console.error(err);
-          store.setError(errorMessage);
           errorService.showError(errorMessage);
           throw err;
         }
@@ -224,7 +217,6 @@ export const ProjectsStore = signalStore(
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to remove member';
           console.error('Failed to remove member', err);
-          store.setError(errorMessage);
           errorService.showError(errorMessage);
           throw err;
         }

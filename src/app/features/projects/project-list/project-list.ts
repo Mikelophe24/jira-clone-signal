@@ -157,15 +157,6 @@ export class ProjectList {
   private projectsService = inject(ProjectsService);
   readonly authStore = inject(AuthStore);
 
-  constructor() {
-    effect(() => {
-      const user = this.authStore.user();
-      if (user) {
-        this.store.loadProjects(user.uid);
-      }
-    });
-  }
-
   getOwnerName(ownerId: string): string {
     const currentUser = this.authStore.user();
     if (currentUser?.uid === ownerId) {

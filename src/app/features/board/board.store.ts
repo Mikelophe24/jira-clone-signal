@@ -111,7 +111,6 @@ export const BoardStore = signalStore(
         pipe(
           tap(() => {
             store.setLoading(true);
-            store.clearError();
           }),
           switchMap((projectId) => {
             if (!projectId) {
@@ -126,7 +125,6 @@ export const BoardStore = signalStore(
               }),
               catchError((error) => {
                 const errorMessage = error?.message || 'Failed to load issues';
-                store.setError(errorMessage);
                 errorService.showError(errorMessage);
                 return of([]);
               })
@@ -225,7 +223,6 @@ export const BoardStore = signalStore(
           errorService.showSuccess('Issue created successfully');
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to add issue';
-          store.setError(errorMessage);
           errorService.showError(errorMessage);
         }
       },
@@ -235,7 +232,6 @@ export const BoardStore = signalStore(
           errorService.showSuccess('Issue deleted successfully');
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to delete issue';
-          store.setError(errorMessage);
           errorService.showError(errorMessage);
         }
       },
@@ -258,7 +254,6 @@ export const BoardStore = signalStore(
           await issueService.updateIssue(issueId, updates);
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to update issue';
-          store.setError(errorMessage);
           errorService.showError(errorMessage);
           // Hoàn tác cập nhật lạc quan nếu xảy ra lỗi
           patchState(store, { issues: originalIssues });
