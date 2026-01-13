@@ -5,6 +5,7 @@ import { ProjectsStore } from '../../projects/projects.store';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { Issue, IssuePriority } from '../../issue/issue.model';
+import { IssueService } from '../../issue/issue.service';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -101,6 +102,14 @@ import { CommonModule, DatePipe } from '@angular/common';
             >
               <button
                 mat-icon-button
+                class="backlog-btn"
+                (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
+                matTooltip="Move to Backlog"
+              >
+                <mat-icon>archive</mat-icon>
+              </button>
+              <button
+                mat-icon-button
                 class="delete-btn"
                 color="warn"
                 (click)="$event.stopPropagation(); deleteIssue(issue.id)"
@@ -182,6 +191,14 @@ import { CommonModule, DatePipe } from '@angular/common';
             >
               <button
                 mat-icon-button
+                class="backlog-btn"
+                (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
+                matTooltip="Move to Backlog"
+              >
+                <mat-icon>archive</mat-icon>
+              </button>
+              <button
+                mat-icon-button
                 class="delete-btn"
                 color="warn"
                 (click)="$event.stopPropagation(); deleteIssue(issue.id)"
@@ -261,6 +278,14 @@ import { CommonModule, DatePipe } from '@angular/common';
               [cdkDragData]="issue"
               (click)="openIssueDialog('done', issue)"
             >
+              <button
+                mat-icon-button
+                class="backlog-btn"
+                (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
+                matTooltip="Move to Backlog"
+              >
+                <mat-icon>archive</mat-icon>
+              </button>
               <button
                 mat-icon-button
                 class="delete-btn"
@@ -428,6 +453,9 @@ import { CommonModule, DatePipe } from '@angular/common';
         gap: 8px;
         padding: 4px;
         overflow-y: auto;
+        overflow-x: hidden;
+
+      
       }
       .issue-card {
         position: relative;
@@ -470,6 +498,33 @@ import { CommonModule, DatePipe } from '@angular/common';
         font-weight: 600;
       }
 
+      .issue-card .backlog-btn {
+        position: absolute;
+        top: 2px;
+        right: 28px; /* Position to the left of delete button */
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+        min-height: 24px;
+        padding: 0;
+
+        opacity: 0; /* Hidden by default */
+        transition: opacity 0.2s ease-in-out;
+
+        /* Make icon smaller and centered */
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          line-height: 16px;
+          color: #6b778c; /* Subtle gray */
+        }
+
+        &:hover mat-icon {
+          color: #0052cc; /* Blue on hover */
+        }
+      }
+
       .issue-card .delete-btn {
         position: absolute;
         top: 2px;
@@ -497,6 +552,7 @@ import { CommonModule, DatePipe } from '@angular/common';
         }
       }
 
+      .issue-card:hover .backlog-btn,
       .issue-card:hover .delete-btn {
         opacity: 1; /* Show on card hover */
       }
@@ -583,6 +639,7 @@ export class Board implements OnInit {
   readonly authStore = inject(AuthStore);
   private route = inject(ActivatedRoute);
   private dialog = inject(MatDialog);
+  private issueService = inject(IssueService);
 
   constructor() {
     effect(() => {
@@ -656,6 +713,10 @@ export class Board implements OnInit {
     if (confirm('Are you sure you want to delete this issue?')) {
       this.store.deleteIssue(issueId);
     }
+  }
+
+  moveToBacklog(issueId: string) {
+    this.issueService.moveToBacklog(issueId);
   }
 
   getAssignee(assigneeId: string | undefined) {

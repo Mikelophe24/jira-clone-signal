@@ -77,12 +77,6 @@ export const BoardStore = signalStore(
         );
       });
     });
-
-    // const sortedFilteredIssues = computed(() => {
-    //   // Tạo một bản sao trước khi sắp xếp để tránh làm thay đổi trạng thái gốc nếu có lỗi xảy ra
-    //   return [...filteredIssues()].sort((a, b) => a.order - b.order);
-    // });
-
     const sortedFilteredIssues = computed(() => {
       return [...filteredIssues()].sort((a, b) => a.order - b.order);
     });

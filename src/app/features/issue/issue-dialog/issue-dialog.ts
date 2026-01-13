@@ -8,7 +8,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { FormsModule } from '@angular/forms';
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormGroup,
+  FormBuilder,
+  Validators,
+} from '@angular/forms';
 import { Issue, IssuePriority, IssueType, Comment, Subtask } from '../issue.model';
 import { IssueService } from '../issue.service';
 
@@ -36,12 +42,13 @@ import { DatePipe } from '@angular/common';
     MatNativeDateModule,
     MatCheckboxModule,
     FormsModule,
+    ReactiveFormsModule,
     DatePipe,
   ],
   template: `
     <h2 mat-dialog-title>{{ isEditing ? 'Edit Issue' : 'Create Issue' }}</h2>
     <mat-dialog-content class="dialog-content">
-      <form class="issue-form">
+      <form class="issue-form" [formGroup]="form">
         <!-- Reporter Info (Only in Edit Mode) -->
         @if (isEditing && reporterId; as rid) { @if (getUser(rid); as reporter) {
         <div class="reporter-info">
@@ -60,18 +67,21 @@ import { DatePipe } from '@angular/common';
 
         <mat-form-field appearance="outline">
           <mat-label>Title</mat-label>
-          <input matInput [(ngModel)]="title" name="title" required cdkFocusInitial />
+          <input matInput formControlName="title" required cdkFocusInitial />
+          @if(form.get('title')?.invalid && form.get('title')?.touched) {
+          <mat-error>Title is required</mat-error>
+          }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Description</mat-label>
-          <textarea matInput [(ngModel)]="description" name="description" rows="3"></textarea>
+          <textarea matInput formControlName="description" rows="3"></textarea>
         </mat-form-field>
 
         <div class="row">
           <mat-form-field appearance="outline">
             <mat-label>Type</mat-label>
-            <mat-select [(ngModel)]="type" name="type">
+            <mat-select formControlName="type">
               <mat-option value="task">Task</mat-option>
               <mat-option value="bug">Bug</mat-option>
               <mat-option value="story">Story</mat-option>
@@ -80,7 +90,7 @@ import { DatePipe } from '@angular/common';
 
           <mat-form-field appearance="outline">
             <mat-label>Priority</mat-label>
-            <mat-select [(ngModel)]="priority" name="priority">
+            <mat-select formControlName="priority">
               <mat-option value="low">Low</mat-option>
               <mat-option value="medium">Medium</mat-option>
               <mat-option value="high">High</mat-option>
@@ -91,7 +101,7 @@ import { DatePipe } from '@angular/common';
         <div class="row">
           <mat-form-field appearance="outline">
             <mat-label>Assignee</mat-label>
-            <mat-select [(ngModel)]="assigneeId" name="assignee">
+            <mat-select formControlName="assigneeId">
               <mat-option [value]="null">Unassigned</mat-option>
               @for (member of projectsStore.members(); track member.uid) {
               <mat-option [value]="member.uid">
@@ -103,7 +113,7 @@ import { DatePipe } from '@angular/common';
 
           <mat-form-field appearance="outline">
             <mat-label>Due Date</mat-label>
-            <input matInput [matDatepicker]="picker" [(ngModel)]="dueDate" name="dueDate" />
+            <input matInput [matDatepicker]="picker" formControlName="dueDate" />
             <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
             <mat-datepicker #picker></mat-datepicker>
           </mat-form-field>
@@ -118,6 +128,7 @@ import { DatePipe } from '@angular/common';
           <div class="progress-fill" [style.width.%]="calculateProgress()"></div>
         </div>
         }
+
         <div class="subtask-list">
           @for (s of subtasks; track s.id) {
           <div class="subtask-item">
@@ -151,6 +162,7 @@ import { DatePipe } from '@angular/common';
       <div class="comments-section">
         <h3>Comments</h3>
 
+        
         <div class="comment-list">
           @for (comment of comments; track comment.id) {
           <div class="comment-item">
@@ -208,7 +220,7 @@ import { DatePipe } from '@angular/common';
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancel</button>
-      <button mat-raised-button color="primary" [disabled]="!title" (click)="save()">
+      <button mat-raised-button color="primary" [disabled]="!form.valid" (click)="save()">
         {{ isEditing ? 'Save' : 'Create' }}
       </button>
     </mat-dialog-actions>
@@ -442,16 +454,15 @@ import { DatePipe } from '@angular/common';
 export class IssueDialog {
   projectsStore = inject(ProjectsStore);
   authStore = inject(AuthStore);
+  private fb = inject(FormBuilder);
+  issueService = inject(IssueService);
 
-  title = '';
-  description = '';
-  type: IssueType = 'task';
-  priority: IssuePriority = 'medium';
-  assigneeId: string | undefined | null = null;
-  reporterId: string | undefined | null = null; // New field
+  form!: FormGroup; // Reactive Form
+
+  // Auxiliary state for things not in the main form or complex UI handling
   comments: any[] = [];
   subtasks: Subtask[] = [];
-  dueDate: Date | null = null;
+  reporterId: string | undefined | null = null;
   isEditing = false;
 
   newCommentText = '';
@@ -461,25 +472,47 @@ export class IssueDialog {
     public dialogRef: MatDialogRef<IssueDialog>,
     @Inject(MAT_DIALOG_DATA) public data: IssueDialogData
   ) {
+    this.initForm();
+
     if (data.issue) {
       this.isEditing = true;
-      this.title = data.issue.title;
-      this.description = data.issue.description;
-      this.type = data.issue.type;
-      this.priority = data.issue.priority;
-      this.assigneeId = data.issue.assigneeId || null;
-      this.reporterId = data.issue.reporterId || null; // Load reporter
+      // Load data specifically
+      this.form.patchValue({
+        title: data.issue.title,
+        description: data.issue.description,
+        type: data.issue.type,
+        priority: data.issue.priority,
+        assigneeId: data.issue.assigneeId || null,
+        statusColumnId: data.issue.statusColumnId || data.statusColumnId || 'todo',
+        dueDate: data.issue.dueDate ? new Date(data.issue.dueDate) : null,
+      });
+
+      this.reporterId = data.issue.reporterId || null;
       this.comments = data.issue.comments || [];
-      this.dueDate = data.issue.dueDate ? new Date(data.issue.dueDate) : null;
       this.subtasks = data.issue.subtasks || [];
+    } else {
+      // Set default status if creating new
+      this.form.patchValue({
+        statusColumnId: data.statusColumnId || 'todo',
+      });
     }
+  }
+
+  private initForm() {
+    this.form = this.fb.group({
+      title: ['', [Validators.required]],
+      description: [''],
+      type: ['task' as IssueType, [Validators.required]],
+      priority: ['medium' as IssuePriority, [Validators.required]],
+      assigneeId: [null as string | null],
+      statusColumnId: ['todo'],
+      dueDate: [null as Date | null],
+    });
   }
 
   getUser(userId: string) {
     return this.projectsStore.members().find((m) => m.uid === userId);
   }
-
-  issueService = inject(IssueService);
 
   // ... Comment methods same as before ...
   addComment() {
@@ -588,14 +621,13 @@ export class IssueDialog {
   }
 
   save() {
+    if (this.form.invalid) return;
+
+    const formValue = this.form.getRawValue();
+
     const result: any = {
-      title: this.title,
-      description: this.description,
-      type: this.type,
-      priority: this.priority,
-      assigneeId: this.assigneeId || null,
-      statusColumnId: this.data.statusColumnId || this.data.issue?.statusColumnId || 'todo',
-      dueDate: this.dueDate ? this.dueDate.toISOString() : null,
+      ...formValue,
+      dueDate: formValue.dueDate ? formValue.dueDate.toISOString() : null,
     };
 
     if (!this.isEditing) {

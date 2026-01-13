@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ProjectsStore } from '../../projects/projects.store';
 import { BoardStore } from '../board.store';
 import { IssueDialog } from '../../issue/issue-dialog/issue-dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,7 +15,14 @@ import { AuthStore } from '../../../core/auth/auth.store';
 @Component({
   selector: 'app-backlog',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatCardModule, MatDialogModule],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatDialogModule,
+    MatTooltipModule,
+  ],
   template: `
     <div class="backlog-container">
       <div class="backlog-header">
@@ -35,7 +43,18 @@ import { AuthStore } from '../../../core/auth/auth.store';
 
           <div class="item-right">
             <div class="assignee">
-              {{ getAssigneeName(issue.assigneeId) }}
+              @if (getAssignee(issue.assigneeId); as assignee) {
+              <img
+                [src]="
+                  assignee.photoURL ||
+                  'https://ui-avatars.com/api/?name=' + assignee.displayName + '&background=random'
+                "
+                class="assignee-avatar"
+                [matTooltip]="assignee.displayName"
+              />
+              } @else {
+              <span class="unassigned-text">Unassigned</span>
+              }
             </div>
             <button mat-stroked-button color="primary" (click)="moveToBoard(issue.id)">
               Move to Board
@@ -108,8 +127,20 @@ import { AuthStore } from '../../../core/auth/auth.store';
         font-weight: 500;
       }
       .assignee {
+        display: flex;
+        align-items: center;
+      }
+      .assignee-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        object-fit: cover;
+        cursor: pointer;
+      }
+      .unassigned-text {
         color: #5e6c84;
         font-size: 13px;
+        font-style: italic;
       }
       .empty-state {
         padding: 32px;
@@ -217,9 +248,8 @@ export class Backlog {
     }
   }
 
-  getAssigneeName(userId?: string) {
-    if (!userId) return 'Unassigned';
-    const user = this.projectsStore.members().find((m) => m.uid === userId);
-    return user ? user.displayName : 'Unknown';
+  getAssignee(userId?: string) {
+    if (!userId) return undefined;
+    return this.projectsStore.members().find((m) => m.uid === userId);
   }
 }
