@@ -816,8 +816,8 @@ describe('ProjectsService', () => {
 
   it('should handle empty user IDs', (done) => {
     service.getUsers([]).subscribe((users) => {
-      expect(users).toEqual([]);
       done();
+      expect(users).toEqual([]);
     });
   });
 });

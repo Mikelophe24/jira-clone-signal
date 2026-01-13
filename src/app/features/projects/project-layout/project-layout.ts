@@ -20,7 +20,7 @@ import { ProjectsStore } from '../projects.store';
   ],
   template: `
     <div class="project-container">
-      <mat-sidenav-container class="sidenav-container">
+    <mat-sidenav-container class="sidenav-container">
         <mat-sidenav mode="side" opened class="sidenav">
           <div class="sidenav-header">
             @if(store.selectedProject(); as project) {

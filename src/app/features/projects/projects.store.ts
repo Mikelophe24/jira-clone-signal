@@ -31,7 +31,7 @@ const initialState: ProjectsState = {
   projectOwners: [],
   members: [],
   pendingInvites: [],
-  selectedProjectId: null, // Could be loaded from local storage
+  selectedProjectId: null,
 };
 
 export const ProjectsStore = signalStore(
@@ -125,7 +125,7 @@ export const ProjectsStore = signalStore(
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to delete project';
           console.error('Failed to delete project', err);
-          errorService.showError(errorMessage);
+          // errorService.showError(errorMessage);
         }
       },
       acceptInvite: async (project: Project, userId: string) => {

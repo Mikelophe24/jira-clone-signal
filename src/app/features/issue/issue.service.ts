@@ -67,6 +67,16 @@ export class IssueService {
     return this.updateIssue(issueId, { isInBacklog: false });
   }
 
+  async deleteIssuesByProjectId(projectId: string) {
+    const q = query(this.issuesCollection, where('projectId', '==', projectId));
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(this.firestore);
+    snapshot.docs.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    return batch.commit();
+  }
+
   async unassignUserFromProjectIssues(projectId: string, userId: string) {
     const q = query(
       this.issuesCollection,

@@ -42,6 +42,22 @@ import { DatePipe } from '@angular/common';
     <h2 mat-dialog-title>{{ isEditing ? 'Edit Issue' : 'Create Issue' }}</h2>
     <mat-dialog-content class="dialog-content">
       <form class="issue-form">
+        <!-- Reporter Info (Only in Edit Mode) -->
+        @if (isEditing && reporterId; as rid) { @if (getUser(rid); as reporter) {
+        <div class="reporter-info">
+          <span class="label">Reporter:</span>
+          <div class="reporter-chip">
+            <img
+              [src]="
+                reporter.photoURL || 'https://ui-avatars.com/api/?name=' + reporter.displayName
+              "
+              class="reporter-avatar"
+            />
+            {{ reporter.displayName }}
+          </div>
+        </div>
+        } }
+
         <mat-form-field appearance="outline">
           <mat-label>Title</mat-label>
           <input matInput [(ngModel)]="title" name="title" required cdkFocusInitial />
@@ -214,6 +230,33 @@ import { DatePipe } from '@angular/common';
         box-sizing: border-box;
         /* Add some padding to avoid fields hitting the scrollbar edge */
         padding: 8px 24px 8px 4px;
+      }
+
+      .reporter-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: #5e6c84;
+      }
+
+      .reporter-chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #ebecf0;
+        padding: 4px 8px 4px 4px;
+        border-radius: 16px;
+        font-weight: 500;
+        color: #172b4d;
+      }
+
+      .reporter-avatar {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        object-fit: cover;
       }
 
       .row {
@@ -405,6 +448,7 @@ export class IssueDialog {
   type: IssueType = 'task';
   priority: IssuePriority = 'medium';
   assigneeId: string | undefined | null = null;
+  reporterId: string | undefined | null = null; // New field
   comments: any[] = [];
   subtasks: Subtask[] = [];
   dueDate: Date | null = null;
@@ -424,6 +468,7 @@ export class IssueDialog {
       this.type = data.issue.type;
       this.priority = data.issue.priority;
       this.assigneeId = data.issue.assigneeId || null;
+      this.reporterId = data.issue.reporterId || null; // Load reporter
       this.comments = data.issue.comments || [];
       this.dueDate = data.issue.dueDate ? new Date(data.issue.dueDate) : null;
       this.subtasks = data.issue.subtasks || [];
@@ -556,6 +601,11 @@ export class IssueDialog {
     if (!this.isEditing) {
       result.comments = this.comments;
       result.subtasks = this.subtasks;
+      // Set reporterId for new issues
+      const currentUser = this.authStore.user();
+      if (currentUser) {
+        result.reporterId = currentUser.uid;
+      }
     }
 
     this.dialogRef.close(result);

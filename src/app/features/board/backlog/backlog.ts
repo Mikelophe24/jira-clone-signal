@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { IssueService } from '../../issue/issue.service';
 import { ActivatedRoute } from '@angular/router';
+import { AuthStore } from '../../../core/auth/auth.store';
 
 @Component({
   selector: 'app-backlog',
@@ -41,6 +42,9 @@ import { ActivatedRoute } from '@angular/router';
             </button>
             <button mat-icon-button (click)="editIssue(issue)">
               <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteIssue(issue.id, issue.key)">
+              <mat-icon>delete</mat-icon>
             </button>
           </div>
         </div>
@@ -123,6 +127,7 @@ export class Backlog {
   issueService = inject(IssueService);
   dialog = inject(MatDialog);
   route = inject(ActivatedRoute);
+  authStore = inject(AuthStore);
 
   backlogIssues = computed(() => {
     return this.boardStore.issues().filter((i) => i.isInBacklog);
@@ -151,14 +156,17 @@ export class Backlog {
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         const projectId = this.projectsStore.selectedProjectId();
-        if (projectId) {
+        const projectKey = this.projectsStore.selectedProject()?.key;
+        const currentUser = this.authStore.user();
+        if (projectId && projectKey && currentUser) {
           this.boardStore.addIssue({
             ...result,
             projectId,
             boardId: projectId,
             order: 0,
-            key: `${this.projectsStore.selectedProject()?.key}-${Math.floor(Math.random() * 1000)}`,
-            isInBacklog: true, // Enforce Backlog
+            key: this.boardStore.getNextIssueKey(projectKey),
+            reporterId: currentUser.uid,
+            isInBacklog: true,
           });
         }
       }
@@ -175,6 +183,12 @@ export class Backlog {
         this.boardStore.updateIssue(issue.id, result);
       }
     });
+  }
+
+  deleteIssue(issueId: string, issueKey: string) {
+    if (confirm(`Are you sure you want to delete issue ${issueKey}?`)) {
+      this.boardStore.deleteIssue(issueId);
+    }
   }
 
   getPriorityIcon(priority: string) {

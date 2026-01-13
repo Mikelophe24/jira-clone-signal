@@ -635,15 +635,16 @@ export class Board implements OnInit {
         } else {
           // Create new
           const projectId = this.projectsStore.selectedProjectId();
-          if (projectId) {
+          const projectKey = this.projectsStore.selectedProject()?.key;
+
+          if (projectId && projectKey) {
             this.store.addIssue({
               ...result,
               projectId,
               boardId: projectId, // Assuming 1 board per project for now
               order: 0, // Default order
-              key: `${this.projectsStore.selectedProject()?.key}-${Math.floor(
-                Math.random() * 1000
-              )}`,
+              key: this.store.getNextIssueKey(projectKey),
+              reporterId: this.authStore.user()?.uid,
             });
           }
         }

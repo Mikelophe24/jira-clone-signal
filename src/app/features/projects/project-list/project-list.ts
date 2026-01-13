@@ -43,7 +43,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
           <mat-card-content>
             <mat-nav-list>
               @for (project of store.projects(); track project.id) {
-              <a mat-list-item [routerLink]="['/project', project.id]">
+              <mat-list-item [routerLink]="['/project', project.id]" class="project-item">
                 <mat-icon matListItemIcon>folder</mat-icon>
                 <h3 matListItemTitle>{{ project.name }}</h3>
                 <p matListItemLine>{{ project.key }}</p>
@@ -53,13 +53,15 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
                 @if (authStore.user()?.uid === project.ownerId) {
                 <button
                   mat-icon-button
-                  (click)="$event.stopPropagation(); deleteProject(project.id)"
+                  (click)="
+                    $event.preventDefault(); $event.stopPropagation(); deleteProject(project.id)
+                  "
                   matListItemMeta
                 >
                   <mat-icon color="warn">delete</mat-icon>
                 </button>
                 }
-              </a>
+              </mat-list-item>
               } @empty {
               <p class="empty-state">No projects found. Create one!</p>
               }
@@ -146,7 +148,14 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
         font-size: 12px;
         color: #888;
       }
-      a.mat-mdc-list-item {
+      .project-item {
+        cursor: pointer;
+      }
+      .project-item:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+      }
+
+      .mat-mdc-list-item {
         border-radius: 7px !important;
       }
     `,

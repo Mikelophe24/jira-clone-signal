@@ -21,7 +21,6 @@ import { AuthStore } from '../../core/auth/auth.store';
 type BoardFilter = {
   searchQuery: string;
   onlyMyIssues: boolean;
-  ignoreResolved: boolean;
   userId: string | null;
   assignee: string[];
   status: string[];
@@ -38,7 +37,6 @@ const initialState: BoardState = {
   filter: {
     searchQuery: '',
     onlyMyIssues: false,
-    ignoreResolved: false,
     userId: null,
     assignee: [],
     status: [],
@@ -67,7 +65,6 @@ export const BoardStore = signalStore(
         const matchesStatus = status.length === 0 || status.includes(issue.statusColumnId);
         const matchesPriority = priority.length === 0 || priority.includes(issue.priority);
 
-        // const matchesResolved = ignoreResolved ? issue.status !== 'Done' : true; // Giả định 'Done' là trạng thái đã giải quyết
         const isNotBacklog = !issue.isInBacklog;
 
         return (
@@ -81,8 +78,12 @@ export const BoardStore = signalStore(
       });
     });
 
+    // const sortedFilteredIssues = computed(() => {
+    //   // Tạo một bản sao trước khi sắp xếp để tránh làm thay đổi trạng thái gốc nếu có lỗi xảy ra
+    //   return [...filteredIssues()].sort((a, b) => a.order - b.order);
+    // });
+
     const sortedFilteredIssues = computed(() => {
-      // Tạo một bản sao trước khi sắp xếp để tránh làm thay đổi trạng thái gốc nếu có lỗi xảy ra
       return [...filteredIssues()].sort((a, b) => a.order - b.order);
     });
 
@@ -101,11 +102,32 @@ export const BoardStore = signalStore(
       errorService: ErrorNotificationService = inject(ErrorNotificationService)
     ) => ({
       updateFilter: (newFilter: Partial<BoardFilter>) => {
-        patchState(store, (state) =>
-          produce(state, (draft) => {
-            Object.assign(draft.filter, newFilter);
+        patchState(store, (state) => ({
+          filter: { ...state.filter, ...newFilter },
+        }));
+      },
+      /**
+       * Generate the next issue key for a project
+       * Format: ${projectKey}-${issueCount + 1}
+       * Example: "PROJ-1", "PROJ-2", etc.
+       */
+      getNextIssueKey: (projectKey: string): string => {
+        const projectIssues = store.issues().filter((issue) => issue.key.startsWith(projectKey));
+
+        if (projectIssues.length === 0) {
+          return `${projectKey}-1`;
+        }
+
+        // Extract issue numbers and find the maximum
+        const issueNumbers = projectIssues
+          .map((issue) => {
+            const match = issue.key.match(new RegExp(`^${projectKey}-(\\d+)$`));
+            return match ? parseInt(match[1], 10) : 0;
           })
-        );
+          .filter((num) => !isNaN(num));
+
+        const maxIssueNumber = Math.max(...issueNumbers, 0);
+        return `${projectKey}-${maxIssueNumber + 1}`;
       },
       loadIssues: rxMethod<string | null>(
         pipe(
@@ -168,23 +190,10 @@ export const BoardStore = signalStore(
             issueService.batchUpdateIssues(updates);
           }
         } else {
-          // 1. Di chuyển sang cột khác
+          const targetColumnIssues = [...event.container.data];
 
-          // Xóa khỏi vị trí cũ ??? Không, chúng ta chỉ cần cập nhật thuộc tính.
-          // Nhưng chúng ta cũng cần biết chỉ số (index) MỚI trong cột MỚI để thiết lập thứ tự chính xác.
-
-          const targetColumnIssues = [...event.container.data]; // Đây là danh sách TRƯỚC khi thả
-          // Sử dụng transferArrayItem để mô phỏng những gì đã xảy ra về mặt hình ảnh để chúng ta biết thứ tự mới
-          // Lưu ý: Chúng ta đang làm việc với các bản sao để xác định giá trị thứ tự
-          const sourceColumnIssues = [...event.previousContainer.data];
-
-          // Chúng ta thực sự không cần sử dụng transferArrayItem trên trạng thái Store vì chúng ta sử dụng các Computed signal dựa trên statusColumnId.
-          // Chúng ta chỉ cần tính toán giá trị 'order' mới cho mục đã di chuyển.
-
-          // Chèn vào mảng mục tiêu/mô phỏng để tìm các mục lân cận
           targetColumnIssues.splice(event.currentIndex, 0, movedIssue);
 
-          // Tính toán thứ tự mới dựa trên các mục lân cận
           let newOrder = 0;
           const prevItem = targetColumnIssues[event.currentIndex - 1];
           const nextItem = targetColumnIssues[event.currentIndex + 1];
@@ -235,23 +244,21 @@ export const BoardStore = signalStore(
           errorService.showError(errorMessage);
         }
       },
-      updateIssue: async (issueId: string, updates: Partial<Issue>) => {
-        // Lưu trạng thái gốc để có thể hoàn tác (rollback) nếu cần
-        const originalIssues = [...store.issues()];
 
-        // Cập nhật lạc quan (Optimistic Update)
-        // Cập nhật lạc quan (Optimistic Update)
-        patchState(store, (state) =>
-          produce(state, (draft) => {
-            const issue = draft.issues.find((i) => i.id === issueId);
-            if (issue) {
-              Object.assign(issue, updates);
-            }
-          })
-        );
+      updateIssue: async (issueId: string, updates: Partial<Issue>) => {
+        // luu state goc
+        const originalIssues = [...store.issues()];
+        // optimistic update
+
+        patchState(store, (state) => ({
+          issues: state.issues.map((issue) =>
+            issue.id === issueId ? { ...issue, ...updates } : issue
+          ),
+        }));
 
         try {
           await issueService.updateIssue(issueId, updates);
+          errorService.showSuccess('Issue updated successfully');
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to update issue';
           errorService.showError(errorMessage);
