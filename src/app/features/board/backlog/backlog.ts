@@ -77,7 +77,7 @@ import { AuthStore } from '../../../core/auth/auth.store';
     `
       .backlog-container {
         padding: 24px;
-        background: #fff;
+        background: var(--jira-surface);
         height: 100%;
         overflow-y: auto;
       }
@@ -89,7 +89,7 @@ import { AuthStore } from '../../../core/auth/auth.store';
 
         h2 {
           margin: 0;
-          color: #172b4d;
+          color: var(--jira-text);
         }
       }
       .backlog-item {
@@ -97,13 +97,14 @@ import { AuthStore } from '../../../core/auth/auth.store';
         justify-content: space-between;
         align-items: center;
         padding: 12px 16px;
-        border: 1px solid #dfe1e6;
+        border: 1px solid var(--jira-border);
+        background: var(--jira-surface-raised);
         border-radius: 3px;
         margin-bottom: 4px;
         transition: background 0.1s;
 
         &:hover {
-          background: #f4f5f7;
+          background: var(--jira-border);
         }
       }
       .item-left {
@@ -119,11 +120,11 @@ import { AuthStore } from '../../../core/auth/auth.store';
       }
       .issue-key {
         font-weight: 500;
-        color: #6b778c;
+        color: var(--jira-text-secondary);
         min-width: 60px;
       }
       .issue-title {
-        color: #172b4d;
+        color: var(--jira-text);
         font-weight: 500;
       }
       .assignee {
@@ -138,15 +139,15 @@ import { AuthStore } from '../../../core/auth/auth.store';
         cursor: pointer;
       }
       .unassigned-text {
-        color: #5e6c84;
+        color: var(--jira-text-secondary);
         font-size: 13px;
         font-style: italic;
       }
       .empty-state {
         padding: 32px;
         text-align: center;
-        color: #6b778c;
-        background: #f4f5f7;
+        color: var(--jira-text-secondary);
+        background: var(--jira-sidebar-bg);
         border-radius: 4px;
       }
     `,

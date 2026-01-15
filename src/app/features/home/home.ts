@@ -131,8 +131,9 @@ import { Router, RouterLink } from '@angular/router';
     `
       .home-container {
         padding: 32px;
-        background-color: #f4f5f7;
+        background-color: var(--jira-surface);
         min-height: 100%;
+        color: var(--jira-text);
       }
 
       .header {
@@ -140,11 +141,11 @@ import { Router, RouterLink } from '@angular/router';
         h1 {
           margin: 0 0 8px 0;
           font-size: 24px;
-          color: #172b4d;
+          color: var(--jira-text);
         }
         .subtitle {
           margin: 0;
-          color: #5e6c84;
+          color: var(--jira-text-secondary);
           font-size: 14px;
         }
       }
@@ -160,13 +161,15 @@ import { Router, RouterLink } from '@angular/router';
         flex: 1;
         min-width: 140px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        background-color: var(--jira-surface-raised);
+        color: var(--jira-text);
 
         mat-card-content {
           padding: 16px !important;
         }
 
         .stat-label {
-          color: #5e6c84;
+          color: var(--jira-text-secondary);
           font-size: 11px;
           font-weight: 500;
           text-transform: uppercase;
@@ -177,7 +180,7 @@ import { Router, RouterLink } from '@angular/router';
         .stat-value {
           font-size: 24px;
           font-weight: 600;
-          color: #172b4d;
+          color: var(--jira-text);
         }
       }
 
@@ -203,7 +206,7 @@ import { Router, RouterLink } from '@angular/router';
         h3 {
           margin: 0;
           font-size: 16px;
-          color: #172b4d;
+          color: var(--jira-text);
           font-weight: 600;
         }
       }
@@ -213,9 +216,11 @@ import { Router, RouterLink } from '@angular/router';
         cursor: pointer;
         transition: box-shadow 0.2s;
         border-radius: 4px;
+        background-color: var(--jira-surface-raised);
+        color: var(--jira-text);
 
         &:hover {
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+          background-color: var(--jira-border);
         }
       }
 
@@ -262,7 +267,7 @@ import { Router, RouterLink } from '@angular/router';
 
       .task-title {
         font-weight: 500;
-        color: #172b4d;
+        color: var(--jira-text);
         margin-bottom: 6px;
       }
 
@@ -270,7 +275,7 @@ import { Router, RouterLink } from '@angular/router';
         display: flex;
         gap: 8px;
         font-size: 12px;
-        color: #5e6c84;
+        color: var(--jira-text-secondary);
       }
 
       .due-date.overdue {
@@ -284,8 +289,8 @@ import { Router, RouterLink } from '@angular/router';
 
         button {
           width: 100%;
-          background: rgba(9, 30, 66, 0.04);
-          color: #42526e;
+          background: var(--jira-Sidebar-bg);
+          color: var(--jira-text-secondary);
         }
       }
 
@@ -308,6 +313,9 @@ import { Router, RouterLink } from '@angular/router';
           align-items: center;
           gap: 12px;
           padding: 16px;
+          background-color: var(--jira-surface-raised);
+          color: var(--jira-text);
+          border-radius: 4px;
         }
       }
 
@@ -325,11 +333,11 @@ import { Router, RouterLink } from '@angular/router';
 
       .project-name {
         font-weight: 500;
-        color: #172b4d;
+        color: var(--jira-text);
       }
 
       .empty-state {
-        color: #6b778c;
+        color: var(--jira-text-secondary);
         font-style: italic;
         padding: 16px;
       }

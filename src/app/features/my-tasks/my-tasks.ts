@@ -121,7 +121,7 @@ import { Issue } from '../issue/issue.model';
     `
       .my-tasks-container {
         padding: 24px;
-        background: #fff;
+        background: var(--jira-surface);
         height: 100%;
         overflow: auto;
       }
@@ -130,7 +130,7 @@ import { Issue } from '../issue/issue.model';
 
         h2 {
           margin: 0 0 16px 0;
-          color: #172b4d;
+          color: var(--jira-text);
           font-size: 24px;
         }
 
@@ -146,7 +146,7 @@ import { Issue } from '../issue/issue.model';
 
           mat-icon {
             font-size: 20px;
-            color: #5e6c84;
+            color: var(--jira-text-secondary);
           }
 
           input {
@@ -161,8 +161,9 @@ import { Issue } from '../issue/issue.model';
       .tasks-table {
         width: 100%;
         box-shadow: none;
-        border: 1px solid #dfe1e6;
+        border: 1px solid var(--jira-border);
         border-radius: 4px;
+        background: var(--jira-surface-raised);
       }
 
       /* Status Badges */
@@ -203,7 +204,7 @@ import { Issue } from '../issue/issue.model';
 
       .issue-title {
         font-weight: 500;
-        color: #172b4d;
+        color: var(--jira-text);
       }
     `,
   ],
@@ -249,7 +250,6 @@ export class MyTasks {
 
     return issues;
   });
-
 
   getProjectName(projectId: string): string {
     const project = this.projectsStore.projects().find((p) => p.id === projectId);

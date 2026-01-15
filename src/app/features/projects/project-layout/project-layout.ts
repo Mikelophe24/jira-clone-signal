@@ -20,7 +20,7 @@ import { ProjectsStore } from '../projects.store';
   ],
   template: `
     <div class="project-container">
-    <mat-sidenav-container class="sidenav-container">
+      <mat-sidenav-container class="sidenav-container">
         <mat-sidenav mode="side" opened class="sidenav">
           <div class="sidenav-header">
             @if(store.selectedProject(); as project) {
@@ -60,11 +60,12 @@ import { ProjectsStore } from '../projects.store';
       }
       .sidenav-container {
         height: 100%;
+        background-color: transparent;
       }
       .sidenav {
         width: 240px;
-        background: #f4f5f7;
-        border-right: 1px solid #dfe1e6;
+        background: var(--jira-sidebar-bg);
+        border-right: 1px solid var(--jira-border);
       }
       .sidenav-header {
         padding: 24px 16px;
@@ -73,32 +74,33 @@ import { ProjectsStore } from '../projects.store';
           margin: 0;
           font-size: 16px;
           font-weight: 600;
-          color: #42526e;
+          color: var(--jira-text);
         }
 
         .project-key {
           margin: 4px 0 0;
           font-size: 12px;
-          color: #5e6c84;
+          color: var(--jira-text-secondary);
         }
       }
       .active-link {
-        background: #ebecf0;
-        color: #0052cc !important;
+        background: var(--jira-active-link-bg);
+        color: var(--jira-active-link-text) !important;
 
         mat-icon {
-          color: #0052cc;
+          color: var(--jira-active-link-text);
         }
       }
       .divider {
         margin: 8px 0;
-        border-top: 1px solid #dfe1e6;
+        border-top: 1px solid var(--jira-border);
       }
       .content-wrapper {
         padding: 0;
         height: 100%;
         display: flex;
         flex-direction: column;
+        background-color: var(--jira-surface);
       }
     `,
   ],

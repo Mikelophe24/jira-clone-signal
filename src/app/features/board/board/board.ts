@@ -352,7 +352,7 @@ import { CommonModule, DatePipe } from '@angular/common';
         flex-direction: column;
         height: 100%;
         padding: 16px;
-        background-color: #f4f5f7;
+        background-color: var(--jira-surface);
       }
       .board-header {
         margin-bottom: 24px;
@@ -367,7 +367,7 @@ import { CommonModule, DatePipe } from '@angular/common';
         h2 {
           margin: 0;
           font-size: 24px;
-          color: #172b4d;
+          color: var(--jira-text);
         }
 
         .filters {
@@ -413,13 +413,14 @@ import { CommonModule, DatePipe } from '@angular/common';
         flex: 1;
         min-width: 280px;
         max-width: 350px;
-        background: #ebecf0;
+        background: var(--jira-sidebar-bg); /* Use sidebar-bg as column bg */
         border-radius: 6px;
         display: flex;
         flex-direction: column;
         padding: 8px;
         max-height: 100%;
         overflow: hidden; /* Ensure column itself doesn't scroll */
+        border: 1px solid var(--jira-border);
       }
       .column-header {
         padding: 12px 8px;
@@ -430,7 +431,7 @@ import { CommonModule, DatePipe } from '@angular/common';
           margin: 0;
           font-size: 12px;
           font-weight: 600;
-          color: #5e6c84;
+          color: var(--jira-text-secondary);
           text-transform: uppercase;
         }
         .header-end {
@@ -439,10 +440,12 @@ import { CommonModule, DatePipe } from '@angular/common';
           gap: 8px;
         }
         .issue-count {
-          background: rgba(0, 0, 0, 0.1);
+          background: rgba(127, 127, 127, 0.2); /* Semi-transparent for both modes */
           border-radius: 10px;
+          border: 1px solid var(--jira-border);
           padding: 2px 8px;
           font-size: 11px;
+          color: var(--jira-text);
         }
       }
       .issue-list {
@@ -454,20 +457,18 @@ import { CommonModule, DatePipe } from '@angular/common';
         padding: 4px;
         overflow-y: auto;
         overflow-x: hidden;
-
-      
       }
       .issue-card {
         position: relative;
         cursor: move;
-        background: #fff;
+        background: var(--jira-surface-raised);
         border-radius: 3px;
-        box-shadow: 0 1px 2px rgba(9, 30, 66, 0.25);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         transition: background 0.1s, box-shadow 0.1s;
         margin-bottom: 4px;
 
         &:hover {
-          background-color: #ebecf0;
+          background-color: var(--jira-border);
         }
       }
 
@@ -478,7 +479,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 
       .issue-title {
         font-size: 14px;
-        color: #172b4d;
+        color: var(--jira-text);
         margin-bottom: 12px;
         line-height: 1.4;
         font-weight: 500;
@@ -494,7 +495,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 
       .key {
         font-size: 12px;
-        color: #5e6c84;
+        color: var(--jira-text-secondary);
         font-weight: 600;
       }
 
@@ -562,14 +563,15 @@ import { CommonModule, DatePipe } from '@angular/common';
         border-radius: 4px;
         box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14),
           0 3px 14px 2px rgba(0, 0, 0, 0.12);
-        background-color: white;
+        background-color: var(--jira-surface-raised);
+        color: var(--jira-text);
         z-index: 1000;
         overflow: hidden !important; /* Fix scrollbars during drag */
       }
       .cdk-drag-placeholder {
         opacity: 0.5;
-        background: #e0e0e0;
-        border: 1px dashed #999;
+        background: var(--jira-sidebar-bg);
+        border: 1px dashed var(--jira-text-secondary);
         min-height: 80px;
       }
       .cdk-drag-animating {

@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthStore } from './core/auth/auth.store';
 import { ProjectsStore } from './features/projects/projects.store';
+import { ThemeStore } from './core/theme/theme.store';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,14 +32,20 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
   ],
   template: `
     <div class="app-container">
-      <mat-toolbar color="primary" class="main-toolbar">
+      <mat-toolbar class="main-toolbar">
         @if (authStore.user()) {
         <button mat-icon-button (click)="toggleSidebar()" title="Toggle Sidebar">
           <mat-icon>menu</mat-icon>
         </button>
         }
-        <span>Jira Clone</span>
+        <span class="logo-text">Jira Clone</span>
+
         <span class="spacer"></span>
+
+        <!-- Theme Toggle -->
+        <button mat-icon-button (click)="themeStore.toggleTheme()" class="theme-toggle">
+          <mat-icon>{{ themeStore.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+        </button>
 
         @if (authStore.user()) {
         <!-- Notifications -->
@@ -144,10 +151,26 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
         display: flex;
         flex-direction: column;
         height: 100vh;
+        background-color: var(--jira-surface);
       }
       .main-toolbar {
         position: relative;
         z-index: 2;
+        background-color: var(--jira-header-bg);
+        color: var(--jira-text);
+        border-bottom: 1px solid var(--jira-border);
+      }
+      .logo-text {
+        margin-left: 8px;
+        font-weight: 500;
+        color: var(--jira-text);
+      }
+      .spacer {
+        flex: 1 1 auto;
+      }
+      .theme-toggle {
+        margin-right: 8px;
+        color: var(--jira-text-secondary);
       }
       .spacer {
         flex: 1 1 auto;
@@ -171,11 +194,12 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
       }
       .main-sidenav {
         width: 250px;
-        background: #f4f5f7;
-        border-right: 1px solid #dfe1e6;
+        background: var(--jira-sidebar-bg);
+        border-right: 1px solid var(--jira-border);
+        color: var(--jira-text);
       }
       .main-content {
-        background: #fff;
+        background: var(--jira-surface);
         display: flex;
         flex-direction: column;
       }
@@ -184,10 +208,12 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
         overflow: auto;
       }
       .active-link {
-        background-color: #ebecf0;
-        color: #0052cc !important;
+        background-color: var(--jira-active-link-bg);
+        color: var(--jira-active-link-text) !important;
+
+        span,
         mat-icon {
-          color: #0052cc;
+          color: var(--jira-active-link-text) !important;
         }
       }
       .project-icon {
@@ -226,6 +252,7 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
 export class AppComponent {
   readonly authStore = inject(AuthStore);
   readonly projectsStore = inject(ProjectsStore);
+  readonly themeStore = inject(ThemeStore);
 
   // Sidebar state
   readonly sidebarOpened = signal<boolean>(true);

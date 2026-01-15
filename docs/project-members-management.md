@@ -257,7 +257,7 @@ inviteUserToProject(projectId: string, userId: string, currentInvitedIds: string
    ↓
 9. Real-time listener phát hiện thay đổi
    ↓
-10. UI tự động cập nhật (nếu user-123 đang online)
+10. UI tự động cập nhật (nếu user-123 đang oninle)
 ```
 
 ---
