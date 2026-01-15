@@ -1,11 +1,13 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, computed, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatOptionModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { FormsModule } from '@angular/forms';
 import { MyTasksStore } from './my-tasks.store';
 import { AuthStore } from '../../core/auth/auth.store';
 import { ProjectsStore } from '../projects/projects.store';
@@ -19,19 +21,44 @@ import { Issue } from '../issue/issue.model';
     MatTableModule,
     MatSelectModule,
     MatFormFieldModule,
+    MatInputModule,
     MatOptionModule,
     MatIconModule,
     MatButtonModule,
+    FormsModule,
     DatePipe,
   ],
   template: `
     <div class="my-tasks-container">
       <div class="header">
         <h2>My Tasks</h2>
-        <!-- Could add filters here later similar to screenshot -->
+        <div class="filters">
+          <mat-form-field appearance="outline" class="search-input" subscriptSizing="dynamic">
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput placeholder="Search tasks" [(ngModel)]="searchQuery" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-select" subscriptSizing="dynamic">
+            <mat-label>Status</mat-label>
+            <mat-select [(ngModel)]="statusFilter">
+              <mat-option value="all">All</mat-option>
+              <mat-option value="todo">TODO</mat-option>
+              <mat-option value="in-progress">In Progress</mat-option>
+              <mat-option value="done">Done</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="filter-select" subscriptSizing="dynamic">
+            <mat-label>Priority</mat-label>
+            <mat-select [(ngModel)]="priorityFilter">
+              <mat-option value="all">All</mat-option>
+              <mat-option value="high">High</mat-option>
+              <mat-option value="medium">Medium</mat-option>
+              <mat-option value="low">Low</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
       </div>
 
-      <table mat-table [dataSource]="store.issues()" class="tasks-table">
+      <table mat-table [dataSource]="filteredIssues()" class="tasks-table">
         <!-- Status Column -->
         <ng-container matColumnDef="status">
           <th mat-header-cell *matHeaderCellDef>Status</th>
@@ -100,10 +127,35 @@ import { Issue } from '../issue/issue.model';
       }
       .header {
         margin-bottom: 24px;
+
         h2 {
-          margin: 0;
+          margin: 0 0 16px 0;
           color: #172b4d;
           font-size: 24px;
+        }
+
+        .filters {
+          display: flex;
+          gap: 16px;
+          align-items: center;
+          flex-wrap: wrap;
+        }
+
+        .search-input {
+          width: 250px;
+
+          mat-icon {
+            font-size: 20px;
+            color: #5e6c84;
+          }
+
+          input {
+            font-size: 14px;
+          }
+        }
+
+        .filter-select {
+          width: 150px;
         }
       }
       .tasks-table {
@@ -161,9 +213,43 @@ export class MyTasks {
   authStore = inject(AuthStore);
   projectsStore = inject(ProjectsStore);
 
-  displayedColumns: string[] = ['title', 'projectId', 'priority', 'status', 'dueDate'];
+  displayedColumns: string[] = ['projectId', 'title', 'priority', 'status', 'dueDate'];
 
-  constructor() {}
+  // Filter state
+  searchQuery = signal('');
+  statusFilter = signal('all');
+  priorityFilter = signal('all');
+
+  // Computed filtered issues
+  filteredIssues = computed(() => {
+    let issues = this.store.issues();
+    const search = this.searchQuery().toLowerCase();
+    const status = this.statusFilter();
+    const priority = this.priorityFilter();
+
+    // Apply search filter
+    if (search) {
+      issues = issues.filter(
+        (issue) =>
+          issue.title.toLowerCase().includes(search) ||
+          issue.key?.toLowerCase().includes(search) ||
+          this.getProjectName(issue.projectId).toLowerCase().includes(search)
+      );
+    }
+
+    // Apply status filter
+    if (status !== 'all') {
+      issues = issues.filter((issue) => issue.statusColumnId === status);
+    }
+
+    // Apply priority filter
+    if (priority !== 'all') {
+      issues = issues.filter((issue) => issue.priority === priority);
+    }
+
+    return issues;
+  });
+
 
   getProjectName(projectId: string): string {
     const project = this.projectsStore.projects().find((p) => p.id === projectId);

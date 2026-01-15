@@ -1,4 +1,4 @@
-import { Component, Inject, inject } from '@angular/core';
+import { Component, Inject, inject, ChangeDetectionStrategy } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -45,6 +45,7 @@ import { DatePipe } from '@angular/common';
     ReactiveFormsModule,
     DatePipe,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h2 mat-dialog-title>{{ isEditing ? 'Edit Issue' : 'Create Issue' }}</h2>
     <mat-dialog-content class="dialog-content">
@@ -162,7 +163,6 @@ import { DatePipe } from '@angular/common';
       <div class="comments-section">
         <h3>Comments</h3>
 
-        
         <div class="comment-list">
           @for (comment of comments; track comment.id) {
           <div class="comment-item">

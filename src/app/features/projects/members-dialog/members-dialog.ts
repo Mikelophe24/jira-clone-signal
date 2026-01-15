@@ -9,7 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { FormsModule } from '@angular/forms';
 import { ProjectsStore } from '../projects.store';
-
 import { AuthStore } from '../../../core/auth/auth.store';
 
 @Component({
@@ -152,7 +151,6 @@ export class MembersDialog {
   async leaveProject(memberId: string) {
     if (!confirm('Are you sure you want to leave this project?')) return;
     try {
-      
       await this.store.removeMember(memberId);
       this.dialogRef.close();
       this.router.navigate(['/projects']);

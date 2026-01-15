@@ -73,6 +73,17 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
           }
         </mat-menu>
 
+        @if (authStore.user(); as user) {
+        <img
+          [src]="
+            user.photoURL ||
+            'https://ui-avatars.com/api/?name=' + user.displayName + '&background=random'
+          "
+          class="user-avatar"
+          [title]="user.displayName"
+        />
+        }
+
         <span class="user-name">{{ authStore.user()?.displayName }}</span>
         <button mat-icon-button (click)="authStore.logout()" title="Logout">
           <mat-icon>logout</mat-icon>
@@ -141,10 +152,19 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
       .spacer {
         flex: 1 1 auto;
       }
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        margin-left: 16px;
+        object-fit: cover;
+        box-shadow: 0 0 0 2px #fff;
+      }
       .user-name {
         margin-right: 8px;
         font-size: 14px;
-        margin-left: 16px;
+        margin-left: 8px;
+        font-weight: 500;
       }
       .sidenav-container {
         flex: 1;

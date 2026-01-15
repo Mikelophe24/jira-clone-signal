@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ProjectsStore } from '../projects/projects.store';
 import { MyTasksStore } from '../my-tasks/my-tasks.store';
 import { AuthStore } from '../../core/auth/auth.store';
@@ -11,7 +12,14 @@ import { Router, RouterLink } from '@angular/router';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, MatButtonModule, RouterLink],
+  imports: [
+    CommonModule,
+    MatCardModule,
+    MatIconModule,
+    MatButtonModule,
+    MatTooltipModule,
+    RouterLink,
+  ],
   template: `
     <div class="home-container">
       <div class="header">
@@ -31,7 +39,7 @@ import { Router, RouterLink } from '@angular/router';
         <!-- Total Tasks (Using MyTasks count for now) -->
         <mat-card class="stat-card">
           <mat-card-content>
-            <div class="stat-label">Total Tasks</div>
+            <div class="stat-label">Assigned Tasks</div>
             <div class="stat-value">{{ myTasksStore.issues().length }}</div>
           </mat-card-content>
         </mat-card>
@@ -63,6 +71,18 @@ import { Router, RouterLink } from '@angular/router';
             @for (task of displayedTasks(); track task.id) {
             <mat-card class="task-card" [routerLink]="['/project', task.projectId, 'board']">
               <mat-card-content>
+                <div class="task-header">
+                  <mat-icon
+                    [style.color]="getPriorityColor(task.priority)"
+                    class="priority-icon"
+                    [matTooltip]="task.priority"
+                  >
+                    {{ getPriorityIcon(task.priority) }}
+                  </mat-icon>
+                  <span class="status-badge" [ngClass]="task.statusColumnId">
+                    {{ formatStatus(task.statusColumnId) }}
+                  </span>
+                </div>
                 <div class="task-title">{{ task.title }}</div>
                 <div class="task-meta">
                   <span class="project-name">{{ getProjectName(task.projectId) }}</span>
@@ -83,7 +103,7 @@ import { Router, RouterLink } from '@angular/router';
           </div>
           <div class="widget-footer">
             <button mat-button color="primary" (click)="toggleExpand()">
-              {{ isExpanded() ? 'Show Less' : 'Show All' }}
+              {{ isExpanded() ? 'Show Less' : 'View All Tasks' }}
             </button>
           </div>
         </div>
@@ -92,7 +112,6 @@ import { Router, RouterLink } from '@angular/router';
         <div class="widget projects-list">
           <div class="widget-header">
             <h3>Projects ({{ projectsStore.projects().length }})</h3>
-            <button mat-icon-button><mat-icon>add</mat-icon></button>
           </div>
           <div class="widget-content project-grid">
             @for (project of projectsStore.projects(); track project.id) {
@@ -200,6 +219,47 @@ import { Router, RouterLink } from '@angular/router';
         }
       }
 
+      .task-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .priority-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-left: auto;
+      }
+
+      .status-badge.todo {
+        background: #dfe1e6;
+        color: #42526e;
+      }
+
+      .status-badge.in-progress {
+        background: #deebff;
+        color: #0052cc;
+      }
+
+      .status-badge.done {
+        background: #e3fcef;
+        color: #006644;
+      }
+
       .task-title {
         font-weight: 500;
         color: #172b4d;
@@ -296,6 +356,17 @@ export class Home {
     () => this.myTasksStore.issues().filter((i) => i.statusColumnId === 'done').length
   );
 
+  // inprogressTasksCount = computed(() => this.myTasksStore.issues().filter(i => i.statusColumnId === 'in-progress').length);
+
+  // overdueTasksCount = computed(() => {
+  //   const today = new Date();
+  //   today.setHours(0, 0, 0, 0);
+  //   return this.myTasksStore
+  //     .issues()
+  //     .filter((i) => i.dueDate && new Date(i.dueDate) < today && i.statusColumnId !== 'done')
+  //     .length;
+  // });
+
   overdueTasksCount = computed(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -337,5 +408,44 @@ export class Home {
     if (diffDays < 0) return 'Overdue';
     if (diffDays === 0) return 'Today';
     return diffDays + ' days left';
+  }
+
+  getPriorityIcon(priority: string): string {
+    switch (priority) {
+      case 'high':
+        return 'arrow_upward';
+      case 'medium':
+        return 'remove';
+      case 'low':
+        return 'arrow_downward';
+      default:
+        return 'remove';
+    }
+  }
+
+  getPriorityColor(priority: string): string {
+    switch (priority) {
+      case 'high':
+        return '#de350b'; // Red
+      case 'medium':
+        return '#ff9900'; // Orange
+      case 'low':
+        return '#0065ff'; // Blue
+      default:
+        return '#172b4d';
+    }
+  }
+
+  formatStatus(statusId: string): string {
+    switch (statusId) {
+      case 'todo':
+        return 'TODO';
+      case 'in-progress':
+        return 'IN PROGRESS';
+      case 'done':
+        return 'DONE';
+      default:
+        return statusId.toUpperCase();
+    }
   }
 }

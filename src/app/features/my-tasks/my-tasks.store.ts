@@ -35,7 +35,7 @@ export const MyTasksStore = signalStore(
         }),
         tap((issues) => {
           console.log('Issues found:', issues);
-          patchState(store, { issues, loading: false });
+          patchState(store, { issues: issues, loading: false });
         })
       )
     ),
