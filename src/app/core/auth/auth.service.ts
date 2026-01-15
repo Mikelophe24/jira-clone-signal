@@ -31,7 +31,9 @@ export class AuthService {
   }
 
   async loginWithEmail(email: string, pass: string) {
-    return signInWithEmailAndPassword(this.auth, email, pass);
+    const cred = await signInWithEmailAndPassword(this.auth, email, pass);
+    await this.syncUserToFirestore(cred.user);
+    return cred;
   }
 
   async registerWithEmail(email: string, pass: string, name: string) {

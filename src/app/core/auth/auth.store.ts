@@ -25,7 +25,7 @@ export const AuthStore = signalStore(
       router = inject(Router),
       errorService = inject(ErrorNotificationService)
     ) => ({
-      login: async () => {
+      loginGoogle: async () => {
         store.setLoading(true);
         store.clearError();
 
@@ -35,7 +35,6 @@ export const AuthStore = signalStore(
         window.addEventListener('focus', onFocus);
 
         try {
-          console.log('Attempting to login with Google...');
           await authService.loginWithGoogle();
           console.log('Login successful');
           errorService.showSuccess('Welcome! Login successful');
@@ -95,7 +94,7 @@ export const AuthStore = signalStore(
         }
       },
       _setUser: (user: User | null) => {
-        // Internal use - called by auth state subscription
+        // Internal use - chỉ dùng internally (trong store hoặc hooks)
         patchState(store, { user });
         store.setLoading(false);
       },

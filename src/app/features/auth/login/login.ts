@@ -92,7 +92,7 @@ import { FormsModule } from '@angular/forms';
           <button
             mat-stroked-button
             class="google-btn"
-            (click)="store.login()"
+            (click)="store.loginGoogle()"
             [disabled]="store.loading()"
           >
             <mat-icon>login</mat-icon>
