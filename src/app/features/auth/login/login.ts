@@ -45,11 +45,11 @@ import { FormsModule } from '@angular/forms';
               <div class="form-container">
                 <mat-form-field appearance="outline">
                   <mat-label>Email</mat-label>
-                  <input matInput [(ngModel)]="email" type="email" />
+                  <input matInput [(ngModel)]="email" type="email" (keyup.enter)="login()" />
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Password</mat-label>
-                  <input matInput [(ngModel)]="password" type="password" />
+                  <input matInput [(ngModel)]="password" type="password" (keyup.enter)="login()" />
                 </mat-form-field>
                 <button
                   mat-raised-button
@@ -65,15 +65,20 @@ import { FormsModule } from '@angular/forms';
               <div class="form-container">
                 <mat-form-field appearance="outline">
                   <mat-label>Full Name</mat-label>
-                  <input matInput [(ngModel)]="name" />
+                  <input matInput [(ngModel)]="name" (keyup.enter)="register()" />
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Email</mat-label>
-                  <input matInput [(ngModel)]="email" type="email" />
+                  <input matInput [(ngModel)]="email" type="email" (keyup.enter)="register()" />
                 </mat-form-field>
                 <mat-form-field appearance="outline">
                   <mat-label>Password</mat-label>
-                  <input matInput [(ngModel)]="password" type="password" />
+                  <input
+                    matInput
+                    [(ngModel)]="password"
+                    type="password"
+                    (keyup.enter)="register()"
+                  />
                 </mat-form-field>
                 <button
                   mat-raised-button
@@ -110,16 +115,21 @@ import { FormsModule } from '@angular/forms';
         align-items: center;
         justify-content: center;
         height: 100vh;
-        background-color: #f4f5f7;
+        background-color: var(--jira-surface-sunken);
+        transition: background-color 0.3s ease;
       }
       .login-card {
         max-width: 400px;
         width: 100%;
         padding: 16px;
+        background-color: var(--jira-surface-raised);
+        color: var(--jira-text);
+        border: 1px solid var(--jira-border);
       }
       .title {
         font-size: 24px;
         margin-bottom: 8px;
+        color: var(--jira-text);
       }
       .content {
         padding-top: 16px;
@@ -143,13 +153,15 @@ import { FormsModule } from '@angular/forms';
       }
       .divider {
         text-align: center;
-        color: #888;
+        color: var(--jira-text-secondary);
         margin: 16px 0;
         font-size: 12px;
         font-weight: 500;
       }
       .google-btn {
         width: 100%;
+        color: var(--jira-text);
+        border-color: var(--jira-border);
       }
     `,
   ],

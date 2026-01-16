@@ -35,12 +35,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
         padding: 8px 16px;
         gap: 4px;
         font-size: 14px;
-        color: #5e6c84;
+        color: var(--jira-text-secondary);
       }
 
       .crumb-link {
         text-decoration: none;
-        color: #0052cc;
+        color: var(--jira-active-link-text);
         font-weight: 500;
 
         &:hover {
@@ -49,14 +49,14 @@ import { toSignal } from '@angular/core/rxjs-interop';
       }
 
       .crumb-text {
-        color: #42526e;
+        color: var(--jira-text);
       }
 
       .separator {
         font-size: 16px;
         width: 16px;
         height: 16px;
-        color: #7a869a;
+        color: var(--jira-text-secondary);
         display: flex;
         align-items: center;
         justify-content: center;

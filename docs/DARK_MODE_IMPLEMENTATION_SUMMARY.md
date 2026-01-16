@@ -170,6 +170,18 @@ Dự án đã được nâng cấp với hệ thống theme động, cho phép n
 
 ---
 
+#### `src/app/features/auth/login/login.ts`
+
+**Thay đổi:**
+
+- Container: `background: var(--jira-surface-sunken)`
+- Card: `background: var(--jira-surface-raised)`, `border: 1px solid var(--jira-border)`
+- Title: `color: var(--jira-text)`
+- Divider: `color: var(--jira-text-secondary)`
+- Google Button: `color: var(--jira-text)`, `border-color: var(--jira-border)`
+
+---
+
 ## 🔧 Cơ Chế Hoạt Động
 
 ### 1. **Initialization Flow**
@@ -268,6 +280,7 @@ Automatic color update
 - [x] Cập nhật Board styles
 - [x] Cập nhật Home (Dashboard) styles
 - [x] Cập nhật MyTasks styles
+- [x] Cập nhật Login styles
 - [x] Lưu theme preference vào localStorage
 - [x] Hỗ trợ system preference detection
 - [x] Smooth transition giữa themes
@@ -279,7 +292,7 @@ Automatic color update
 
 ### Cho Developer:
 
-1. **Thêm component mới:** Luôn sử dụng CSS variables thay vì hardcoded colors
+1. **Thêm component mới:** Luôn sử dụng CSS variables thay vì hardco ded colors
 2. **Kiểm tra theme:** Test component trong cả Light và Dark mode
 3. **Extend variables:** Nếu cần thêm màu, định nghĩa trong `styles.scss`
 

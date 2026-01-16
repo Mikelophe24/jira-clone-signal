@@ -382,12 +382,13 @@ import { CommonModule, DatePipe } from '@angular/common';
 
           mat-icon {
             font-size: 20px;
-            color: #5e6c84;
+            color: var(--jira-text-secondary);
             margin-right: 8px;
           }
 
           input {
             font-size: 14px;
+            color: var(--jira-text);
           }
         }
 
@@ -396,8 +397,8 @@ import { CommonModule, DatePipe } from '@angular/common';
           gap: 12px;
 
           button.active {
-            background-color: #deebff;
-            color: #0052cc;
+            background-color: var(--jira-active-link-bg);
+            color: var(--jira-active-link-text);
             border-color: transparent;
           }
         }
@@ -466,9 +467,11 @@ import { CommonModule, DatePipe } from '@angular/common';
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         transition: background 0.1s, box-shadow 0.1s;
         margin-bottom: 4px;
+        border: 1px solid transparent; /* Prepare for border transition */
 
         &:hover {
-          background-color: var(--jira-border);
+          background-color: var(--jira-surface-sunken);
+          border-color: var(--jira-border);
         }
       }
 
@@ -518,7 +521,7 @@ import { CommonModule, DatePipe } from '@angular/common';
           width: 16px;
           height: 16px;
           line-height: 16px;
-          color: #6b778c; /* Subtle gray */
+          color: var(--jira-text-secondary); /* Subtle gray */
         }
 
         &:hover mat-icon {
@@ -545,7 +548,7 @@ import { CommonModule, DatePipe } from '@angular/common';
           width: 16px;
           height: 16px;
           line-height: 16px;
-          color: #6b778c; /* Subtle gray */
+          color: var(--jira-text-secondary); /* Subtle gray */
         }
 
         &:hover mat-icon {
@@ -587,7 +590,7 @@ import { CommonModule, DatePipe } from '@angular/common';
         border-radius: 50%;
         object-fit: cover;
         /* Add a slight border/shadow to pop out */
-        box-shadow: 0 0 0 2px #fff;
+        box-shadow: 0 0 0 2px var(--jira-surface-raised);
       }
 
       .meta-left {
@@ -608,10 +611,10 @@ import { CommonModule, DatePipe } from '@angular/common';
       .due-date {
         margin-left: 8px;
         font-size: 11px;
-        color: #5e6c84;
+        color: var(--jira-text-secondary);
         display: flex;
         align-items: center;
-        background: rgba(9, 30, 66, 0.04);
+        background: var(--jira-surface-sunken);
         padding: 2px 4px;
         border-radius: 3px;
       }
@@ -625,10 +628,10 @@ import { CommonModule, DatePipe } from '@angular/common';
       .subtasks-count {
         margin-left: 8px;
         font-size: 11px;
-        color: #5e6c84;
+        color: var(--jira-text-secondary);
         display: flex;
         align-items: center;
-        background: rgba(9, 30, 66, 0.04);
+        background: var(--jira-surface-sunken);
         padding: 2px 4px;
         border-radius: 3px;
       }
