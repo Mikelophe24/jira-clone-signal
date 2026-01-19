@@ -7,11 +7,13 @@ service cloud.firestore {
     // --- Helper Functions ---
 
     // Check if user is a member of the project
+    // Check if user is a member of the project
     function isProjectMember(projectId) {
       let project = get(/databases/$(database)/documents/projects/$(projectId));
       return project != null && (
-        project.data.memberIds.hasAny([request.auth.uid]) || 
-        (project.data.invitedMemberIds != null && project.data.invitedMemberIds.hasAny([request.auth.uid]))
+        project.data.ownerId == request.auth.uid ||
+        (project.data.keys().hasAny(['memberIds']) && project.data.memberIds.hasAny([request.auth.uid])) || 
+        (project.data.keys().hasAny(['roles']) && project.data.roles.keys().hasAny([request.auth.uid]))
       );
     }
     
@@ -19,6 +21,23 @@ service cloud.firestore {
     function isProjectOwner(projectId) {
       let project = get(/databases/$(database)/documents/projects/$(projectId));
       return project != null && project.data.ownerId == request.auth.uid;
+    }
+
+    // Check if user is ADMIN (owner or role=admin)
+    function isProjectAdmin(projectId) {
+      let project = get(/databases/$(database)/documents/projects/$(projectId));
+      return project != null && (
+        project.data.ownerId == request.auth.uid ||
+        (project.data.keys().hasAny(['roles']) && project.data.roles[request.auth.uid] == 'admin')
+      );
+    }
+    
+    // Check if user is VIEWER
+    function isProjectViewer(projectId) {
+       let project = get(/databases/$(database)/documents/projects/$(projectId));
+       return project != null && 
+              project.data.keys().hasAny(['roles']) && 
+              project.data.roles[request.auth.uid] == 'viewer';
     }
 
     // Validate Project Schema on Create
@@ -82,17 +101,19 @@ service cloud.firestore {
 
       allow create: if signedIn() 
                     && isProjectMember(request.resource.data.projectId)
+                    && !isProjectViewer(request.resource.data.projectId)
                     && isValidIssue();
 
       allow update: if signedIn() 
                     && isProjectMember(resource.data.projectId)
+                    && !isProjectViewer(resource.data.projectId)
                     && notChangingProjectId()
                     && (
-                      // 1. Assignee, Reporter hoặc Project Owner có quyền sửa mọi thứ
+                      // 1. Assignee, Reporter hoặc Project Owner/Admin có quyền sửa mọi thứ
                       (
                         resource.data.assigneeId == request.auth.uid || 
                         resource.data.reporterId == request.auth.uid || 
-                        isProjectOwner(resource.data.projectId)
+                        isProjectAdmin(resource.data.projectId)
                       ) ||
                       // 2. Member bình thường CHỈ được phép đổi status và order (kéo thả)
                       // Chặn thay đổi title, description, priority, type...
@@ -101,8 +122,17 @@ service cloud.firestore {
 
       allow delete: if signedIn() && (
         resource.data.reporterId == request.auth.uid || 
-        isProjectOwner(resource.data.projectId)
+        isProjectAdmin(resource.data.projectId)
       );
+    }
+
+    match /sprints/{sprintId} {
+      allow read: if signedIn() && isProjectMember(resource.data.projectId);
+      // Chỉ Admin mới được tạo/xóa/sửa cấu hình Sprint
+      // Member có thể update status (Start/Complete) -> Tạm thời cho member update để chạy luồng Sprint
+      allow create: if signedIn() && isProjectMember(request.resource.data.projectId) && !isProjectViewer(request.resource.data.projectId);
+      allow update: if signedIn() && isProjectMember(resource.data.projectId) && !isProjectViewer(resource.data.projectId);
+      allow delete: if signedIn() && isProjectAdmin(resource.data.projectId);
     }
 
     match /users/{uid} {

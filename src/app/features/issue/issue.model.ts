@@ -24,6 +24,7 @@ export interface Issue {
   type: IssueType;
   statusColumnId: string;
   priority: IssuePriority;
+  sprintId?: string | null;
   reporterId?: string;
   assigneeId?: string;
   order: number;

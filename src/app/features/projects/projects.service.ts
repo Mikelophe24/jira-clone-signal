@@ -53,11 +53,27 @@ export class ProjectsService {
     return runInInjectionContext(this.injector, () => collectionData(q));
   }
 
-  inviteUserToProject(projectId: string, userId: string, currentInvitedIds: string[] = []) {
+  inviteUserToProject(
+    projectId: string,
+    userId: string,
+    currentInvitedIds: string[] = [],
+    role: 'admin' | 'member' | 'viewer' = 'member',
+    currentRoles: { [key: string]: string } = {}
+  ) {
     const docRef = doc(this.firestore, 'projects', projectId);
     if (currentInvitedIds.includes(userId)) return Promise.resolve();
+
     const newInvitedIds = [...currentInvitedIds, userId];
-    return updateDoc(docRef, { invitedMemberIds: newInvitedIds });
+
+    // Also store the intended role for when they accept
+    // We can store it in the 'roles' map immediately, or separately.
+    // Simpler to store in 'roles' map now, even if they haven't accepted yet.
+    const newRoles = { ...currentRoles, [userId]: role };
+
+    return updateDoc(docRef, {
+      invitedMemberIds: newInvitedIds,
+      roles: newRoles,
+    });
   }
 
   getPendingInvites(userId: string): Observable<Project[]> {

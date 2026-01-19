@@ -17,6 +17,7 @@ import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { withLoadingError } from '../../shared/store-features/with-loading-error.feature';
 import { ErrorNotificationService } from '../../core/services/error-notification.service';
 import { AuthStore } from '../../core/auth/auth.store';
+import { SprintStore } from './sprint.store';
 
 type BoardFilter = {
   searchQuery: string;
@@ -49,6 +50,7 @@ export const BoardStore = signalStore(
   withLoadingError(),
   withState(initialState),
   withComputed(({ issues, filter }) => {
+    const sprintStore = inject(SprintStore);
     // Hỗ trợ lọc các công việc
     const filteredIssues = computed(() => {
       const { searchQuery, onlyMyIssues, userId, assignee, status, priority } = filter();
@@ -65,6 +67,9 @@ export const BoardStore = signalStore(
         const matchesStatus = status.length === 0 || status.includes(issue.statusColumnId);
         const matchesPriority = priority.length === 0 || priority.includes(issue.priority);
 
+        const activeSprintId = sprintStore.activeSprint()?.id;
+        const matchesSprint = issue.sprintId ? issue.sprintId === activeSprintId : true;
+
         const isNotBacklog = !issue.isInBacklog;
 
         return (
@@ -73,7 +78,8 @@ export const BoardStore = signalStore(
           matchesAssignee &&
           matchesStatus &&
           matchesPriority &&
-          isNotBacklog
+          isNotBacklog &&
+          matchesSprint
         );
       });
     });

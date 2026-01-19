@@ -160,7 +160,7 @@ export const ProjectsStore = signalStore(
           errorService.showError(errorMessage);
         }
       },
-      inviteUser: async (email: string) => {
+      inviteUser: async (email: string, role: 'admin' | 'member' | 'viewer' = 'member') => {
         store.setLoading(true);
         try {
           const users = await firstValueFrom(projectsService.findUserByEmail(email));
@@ -181,7 +181,9 @@ export const ProjectsStore = signalStore(
             await projectsService.inviteUserToProject(
               project.id,
               userToInvite.uid,
-              project.invitedMemberIds
+              project.invitedMemberIds,
+              role,
+              project.roles || {}
             );
             errorService.showSuccess(`Invitation sent to ${email}`);
           }

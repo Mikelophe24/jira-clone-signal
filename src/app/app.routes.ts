@@ -28,7 +28,7 @@ export const routes: Routes = [
       },
       {
         path: '',
-        redirectTo: 'board',
+        redirectTo: 'backlog',
         pathMatch: 'full',
       },
     ],

@@ -19,14 +19,14 @@ import { Issue, IssuePriority, IssueType, Comment, Subtask } from '../issue.mode
 import { IssueService } from '../issue.service';
 
 import { ProjectsStore } from '../../projects/projects.store';
+import { SprintStore } from '../../board/sprint.store';
+import { AuthStore } from '../../../core/auth/auth.store'; // Adjust path if needed
+import { DatePipe } from '@angular/common';
 
 export interface IssueDialogData {
   statusColumnId: string;
   issue?: Issue;
 }
-
-import { AuthStore } from '../../../core/auth/auth.store'; // Adjust path if needed
-import { DatePipe } from '@angular/common';
 
 @Component({
   selector: 'app-issue-dialog',
@@ -51,20 +51,31 @@ import { DatePipe } from '@angular/common';
     <mat-dialog-content class="dialog-content">
       <form class="issue-form" [formGroup]="form">
         <!-- Reporter Info (Only in Edit Mode) -->
-        @if (isEditing && reporterId; as rid) { @if (getUser(rid); as reporter) {
-        <div class="reporter-info">
-          <span class="label">Reporter:</span>
-          <div class="reporter-chip">
-            <img
-              [src]="
-                reporter.photoURL || 'https://ui-avatars.com/api/?name=' + reporter.displayName
-              "
-              class="reporter-avatar"
-            />
-            {{ reporter.displayName }}
+        @if (isEditing && reporterId; as rid) {
+        <div class="meta-row">
+          @if (getUser(rid); as reporter) {
+          <div class="reporter-info">
+            <span class="label">Reporter:</span>
+            <div class="reporter-chip">
+              <img
+                [src]="
+                  reporter.photoURL || 'https://ui-avatars.com/api/?name=' + reporter.displayName
+                "
+                class="reporter-avatar"
+              />
+              {{ reporter.displayName }}
+            </div>
           </div>
+          } @if (form.get('sprintId')?.value; as sprintId) { @if (getSprint(sprintId); as sprint) {
+          <div class="sprint-info">
+            <span class="label">Sprint:</span>
+            <div class="sprint-chip">
+              {{ sprint.name }}
+            </div>
+          </div>
+          } }
         </div>
-        } }
+        }
 
         <mat-form-field appearance="outline">
           <mat-label>Title</mat-label>
@@ -101,6 +112,18 @@ import { DatePipe } from '@angular/common';
 
         <div class="row">
           <mat-form-field appearance="outline">
+            <mat-label>Sprint</mat-label>
+            <mat-select formControlName="sprintId">
+              <mat-option [value]="null">Backlog</mat-option>
+              @for (sprint of sprintStore.sprints(); track sprint.id) {
+              <mat-option [value]="sprint.id">
+                {{ sprint.name }}
+              </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
             <mat-label>Assignee</mat-label>
             <mat-select formControlName="assigneeId">
               <mat-option [value]="null">Unassigned</mat-option>
@@ -111,7 +134,9 @@ import { DatePipe } from '@angular/common';
               }
             </mat-select>
           </mat-form-field>
+        </div>
 
+        <div class="row">
           <mat-form-field appearance="outline">
             <mat-label>Due Date</mat-label>
             <input matInput [matDatepicker]="picker" formControlName="dueDate" />
@@ -244,16 +269,22 @@ import { DatePipe } from '@angular/common';
         padding: 8px 24px 8px 4px;
       }
 
-      .reporter-info {
+      .meta-row {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 16px;
+      }
+      .reporter-info,
+      .sprint-info {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 8px;
         font-size: 13px;
         color: #5e6c84;
       }
 
-      .reporter-chip {
+      .reporter-chip,
+      .sprint-chip {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -262,6 +293,10 @@ import { DatePipe } from '@angular/common';
         border-radius: 16px;
         font-weight: 500;
         color: #172b4d;
+      }
+
+      .sprint-chip {
+        padding: 4px 12px; /* bit more padding as no avatar */
       }
 
       .reporter-avatar {
@@ -454,6 +489,7 @@ import { DatePipe } from '@angular/common';
 export class IssueDialog {
   projectsStore = inject(ProjectsStore);
   authStore = inject(AuthStore);
+  sprintStore = inject(SprintStore);
   private fb = inject(FormBuilder);
   issueService = inject(IssueService);
 
@@ -484,6 +520,7 @@ export class IssueDialog {
         priority: data.issue.priority,
         assigneeId: data.issue.assigneeId || null,
         statusColumnId: data.issue.statusColumnId || data.statusColumnId || 'todo',
+        sprintId: data.issue.sprintId || null,
         dueDate: data.issue.dueDate ? new Date(data.issue.dueDate) : null,
       });
 
@@ -506,12 +543,17 @@ export class IssueDialog {
       priority: ['medium' as IssuePriority, [Validators.required]],
       assigneeId: [null as string | null],
       statusColumnId: ['todo'],
+      sprintId: [null as string | null],
       dueDate: [null as Date | null],
     });
   }
 
   getUser(userId: string) {
     return this.projectsStore.members().find((m) => m.uid === userId);
+  }
+
+  getSprint(sprintId: string) {
+    return this.sprintStore.sprints().find((s) => s.id === sprintId);
   }
 
   // ... Comment methods same as before ...
@@ -638,6 +680,18 @@ export class IssueDialog {
       if (currentUser) {
         result.reporterId = currentUser.uid;
       }
+    }
+
+    // Auto-set isInBacklog based on sprint
+    if (result.sprintId) {
+      const sprint = this.sprintStore.sprints().find((s) => s.id === result.sprintId);
+      if (sprint && sprint.status === 'active') {
+        result.isInBacklog = false;
+      } else {
+        result.isInBacklog = true;
+      }
+    } else {
+      result.isInBacklog = true;
     }
 
     this.dialogRef.close(result);

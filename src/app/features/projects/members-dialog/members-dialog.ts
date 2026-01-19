@@ -7,9 +7,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
 import { ProjectsStore } from '../projects.store';
 import { AuthStore } from '../../../core/auth/auth.store';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-members-dialog',
@@ -21,8 +23,10 @@ import { AuthStore } from '../../../core/auth/auth.store';
     MatButtonModule,
     MatIconModule,
     MatListModule,
+    MatSelectModule,
     MatTooltipModule,
     FormsModule,
+    CommonModule,
   ],
   template: `
     <h2 mat-dialog-title>Manage Members</h2>
@@ -63,25 +67,64 @@ import { AuthStore } from '../../../core/auth/auth.store';
       <!-- Add New Member (Only Owner) -->
       @if (isOwner) {
       <h3>Add Member</h3>
-      <div class="add-form">
+      <div class="add-form-container">
         <mat-form-field appearance="outline" class="email-input">
           <mat-label>User Email</mat-label>
           <input matInput [(ngModel)]="emailToAdd" placeholder="friend@example.com" />
         </mat-form-field>
-        <button
-          mat-raised-button
-          color="primary"
-          (click)="addMember()"
-          [disabled]="store.loading() || !emailToAdd"
-        >
-          <mat-icon>person_add</mat-icon> Add
-        </button>
+
+        <div class="role-selector-row">
+          <mat-form-field appearance="outline" class="role-input">
+            <mat-label>Role</mat-label>
+            <mat-select [(ngModel)]="selectedRole">
+              <mat-select-trigger>
+                {{ selectedRole | titlecase }}
+              </mat-select-trigger>
+
+              <mat-option value="admin">
+                <div class="role-option">
+                  <span class="role-title">Administrator</span>
+                  <span class="role-desc"
+                    >Admins can do most things, like update settings and add other admins.</span
+                  >
+                </div>
+              </mat-option>
+              <mat-option value="member">
+                <div class="role-option">
+                  <span class="role-title">Member</span>
+                  <span class="role-desc"
+                    >Members are part of the team, and can add, edit, and collaborate on all
+                    work.</span
+                  >
+                </div>
+              </mat-option>
+              <mat-option value="viewer">
+                <div class="role-option">
+                  <span class="role-title">Viewer</span>
+                  <span class="role-desc"
+                    >Viewers can search through, view, and comment, but not much else.</span
+                  >
+                </div>
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
       </div>
       } @if (error) {
       <p class="error">{{ error }}</p>
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
+      @if (isOwner) {
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="addMember()"
+        [disabled]="store.loading() || !emailToAdd"
+      >
+        <mat-icon>person_add</mat-icon> Invite
+      </button>
+      }
       <button mat-button mat-dialog-close>Close</button>
     </mat-dialog-actions>
   `,
@@ -92,6 +135,11 @@ import { AuthStore } from '../../../core/auth/auth.store';
         background: #eee;
         margin: 16px 0;
       }
+      .add-form-container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
       .add-form {
         display: flex;
         gap: 8px;
@@ -99,10 +147,42 @@ import { AuthStore } from '../../../core/auth/auth.store';
       }
       .email-input {
         flex: 1;
+        width: 100%;
+        margin-bottom: -1.25em; /* Remove extra space from mat-form-field */
+      }
+      .add-btn {
+        height: 56px;
+      }
+      .role-selector-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        width: 100%;
+      }
+      .role-input {
+        flex: 1; /* Take remaining space */
+        width: auto; /* Allow flex to control width */
+        margin-bottom: -1.25em;
+      }
+      .role-option {
+        display: flex;
+        flex-direction: column;
+        padding: 4px 0;
+      }
+      .role-title {
+        font-weight: 500;
+        font-size: 14px;
+        line-height: 20px;
+      }
+      .role-desc {
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.6);
+        line-height: 16px;
+        white-space: normal;
       }
       .error {
         color: #d32f2f;
-        margin-top: 8px;
+        margin-top: 16px;
       }
     `,
   ],
@@ -114,6 +194,7 @@ export class MembersDialog {
   private dialogRef = inject(MatDialogRef);
 
   emailToAdd = '';
+  selectedRole: 'admin' | 'member' | 'viewer' = 'member';
   error = '';
 
   get currentUser() {
@@ -131,8 +212,11 @@ export class MembersDialog {
     this.error = '';
 
     try {
-      await this.store.inviteUser(this.emailToAdd);
+      // Pass the selectedRole to the store action
+      await this.store.inviteUser(this.emailToAdd, this.selectedRole);
       this.emailToAdd = '';
+      // Reset to default
+      this.selectedRole = 'member';
       alert('Invitation sent!');
     } catch (err: any) {
       this.error = err.message || 'Failed to invite member';

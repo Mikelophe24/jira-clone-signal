@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, effect } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { BoardStore } from '../board.store';
 import { ProjectsStore } from '../../projects/projects.store';
 import { AuthStore } from '../../../core/auth/auth.store';
@@ -15,7 +15,10 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BoardFilter } from './board-filter';
 import { IssueDialog } from '../../issue/issue-dialog/issue-dialog';
+
 import { MembersDialog } from '../../projects/members-dialog/members-dialog';
+import { SprintStore } from '../sprint.store';
+import { CompleteSprintDialog } from '../backlog/complete-sprint-dialog/complete-sprint-dialog';
 import { FormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -27,7 +30,6 @@ import { CommonModule, DatePipe } from '@angular/common';
   standalone: true,
   imports: [
     CommonModule,
-    DatePipe,
     DragDropModule,
     MatCardModule,
     MatButtonModule,
@@ -41,6 +43,7 @@ import { CommonModule, DatePipe } from '@angular/common';
     MatFormFieldModule,
     MatSlideToggleModule,
     BoardFilter,
+    RouterLink,
   ],
 
   template: `
@@ -63,9 +66,17 @@ import { CommonModule, DatePipe } from '@angular/common';
                 Only My Issues
               </button>
               <app-board-filter></app-board-filter>
-              <button mat-stroked-button (click)="openMembersDialog()">
-                <mat-icon>people</mat-icon> Members
+
+              @if (sprintStore.activeSprint()) {
+              <button
+                mat-flat-button
+                color="primary"
+                class="complete-sprint-btn"
+                (click)="completeSprint()"
+              >
+                Complete Sprint
               </button>
+              }
             </div>
           </div>
         </div>
@@ -75,7 +86,11 @@ import { CommonModule, DatePipe } from '@angular/common';
         }
       </div>
 
-      <div class="board-columns" cdkDropListGroup>
+      <div
+        class="board-columns"
+        cdkDropListGroup
+        *ngIf="sprintStore.activeSprint(); else emptyState"
+      >
         <!-- TO DO Column -->
         <div class="column">
           <div class="column-header">
@@ -162,6 +177,12 @@ import { CommonModule, DatePipe } from '@angular/common';
               </mat-card-content>
             </mat-card>
             }
+          </div>
+
+          <div class="column-footer">
+            <button mat-button class="create-btn" (click)="openIssueDialog('todo')">
+              <mat-icon>add</mat-icon> Create
+            </button>
           </div>
         </div>
 
@@ -252,6 +273,12 @@ import { CommonModule, DatePipe } from '@angular/common';
             </mat-card>
             }
           </div>
+
+          <div class="column-footer">
+            <button mat-button class="create-btn" (click)="openIssueDialog('in-progress')">
+              <mat-icon>add</mat-icon> Create
+            </button>
+          </div>
         </div>
 
         <!-- DONE Column -->
@@ -341,8 +368,23 @@ import { CommonModule, DatePipe } from '@angular/common';
             </mat-card>
             }
           </div>
+
+          <div class="column-footer">
+            <button mat-button class="create-btn" (click)="openIssueDialog('done')">
+              <mat-icon>add</mat-icon> Create
+            </button>
+          </div>
         </div>
       </div>
+      <ng-template #emptyState>
+        <div class="empty-state">
+          <div class="empty-state-content">
+            <h3>Get started in the backlog</h3>
+            <p>Plan and start a sprint to see work here.</p>
+            <button mat-stroked-button routerLink="../backlog">Go to Backlog</button>
+          </div>
+        </div>
+      </ng-template>
     </div>
   `,
   styles: [
@@ -447,6 +489,40 @@ import { CommonModule, DatePipe } from '@angular/common';
           padding: 2px 8px;
           font-size: 11px;
           color: var(--jira-text);
+        }
+      }
+      .column-footer {
+        padding: 8px;
+        /* create button styling */
+        .create-btn {
+          width: 100%;
+          text-align: left;
+          justify-content: flex-start;
+          color: var(--jira-text-secondary);
+          &:hover {
+            background-color: var(--jira-surface-raised);
+            color: var(--jira-text);
+          }
+          mat-icon {
+            margin-right: 8px;
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+        }
+
+        .inline-create-form {
+          padding: 4px;
+        }
+
+        .inline-input {
+          width: 100%;
+          padding: 8px;
+          border-radius: 3px;
+          border: 2px solid #0052cc;
+          outline: none;
+          font-family: inherit;
+          font-size: 14px;
         }
       }
       .issue-list {
@@ -635,11 +711,37 @@ import { CommonModule, DatePipe } from '@angular/common';
         padding: 2px 4px;
         border-radius: 3px;
       }
+      .empty-state {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        text-align: center;
+        padding-top: 40px;
+
+        .empty-state-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        h3 {
+          margin-bottom: 8px;
+          color: var(--jira-text);
+          font-weight: 500;
+        }
+
+        p {
+          color: var(--jira-text-secondary);
+          margin-bottom: 24px;
+        }
+      }
     `,
   ],
 })
 export class Board implements OnInit {
   readonly store = inject(BoardStore);
+  readonly sprintStore = inject(SprintStore); // Inject SprintStore
   readonly projectsStore = inject(ProjectsStore);
   readonly authStore = inject(AuthStore);
   private route = inject(ActivatedRoute);
@@ -660,6 +762,7 @@ export class Board implements OnInit {
       const projectId = params.get('projectId');
       if (projectId) {
         this.store.loadIssues(projectId);
+        this.sprintStore.loadSprints(projectId); // Load sprints to check active sprint
         this.projectsStore.selectProject(projectId);
       }
     });
@@ -729,12 +832,6 @@ export class Board implements OnInit {
     return this.projectsStore.members().find((m) => m.uid === assigneeId);
   }
 
-  openMembersDialog() {
-    this.dialog.open(MembersDialog, {
-      width: '500px',
-    });
-  }
-
   getPriorityIcon(priority: IssuePriority): string {
     switch (priority) {
       case 'high':
@@ -773,5 +870,50 @@ export class Board implements OnInit {
     if (!issue.subtasks || issue.subtasks.length === 0) return null;
     const completed = issue.subtasks.filter((s) => s.completed).length;
     return { completed, total: issue.subtasks.length };
+  }
+
+  // Complete Sprint Logic
+  completeSprint() {
+    const activeSprint = this.sprintStore.activeSprint();
+    if (!activeSprint) return;
+
+    // We can reuse the same logic/dialog from Backlog
+    // First, we need to get issues for this sprint
+    // The board store 'issues' contains ALL issues, filtered by 'filteredIssues'.
+    // We should probably filter by sprint ID manually or use a selector if available.
+    // For now, let's filter from the main list.
+    const allIssues = this.store.issues();
+    const sprintIssues = allIssues.filter((i) => i.sprintId === activeSprint.id);
+    const futureSprints = this.sprintStore.futureSprints();
+
+    const dialogRef = this.dialog.open(CompleteSprintDialog, {
+      width: '500px',
+      data: {
+        sprint: activeSprint,
+        issues: sprintIssues,
+        futureSprints,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.sprintStore.completeSprint(activeSprint.id);
+
+        const destinationId = result.destinationId;
+        const incompleteIssues = sprintIssues.filter((i) => i.statusColumnId !== 'done');
+
+        if (incompleteIssues.length > 0) {
+          const updates = incompleteIssues.map((i) => ({
+            id: i.id,
+            data: {
+              sprintId: destinationId,
+              isInBacklog: true,
+            },
+          }));
+
+          this.issueService.batchUpdateIssues(updates);
+        }
+      }
+    });
   }
 }

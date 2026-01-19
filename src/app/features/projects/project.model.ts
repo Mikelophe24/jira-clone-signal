@@ -5,4 +5,5 @@ export interface Project {
   ownerId: string;
   memberIds: string[];
   invitedMemberIds?: string[]; // IDs of users invited but not yet accepted
+  roles?: { [userId: string]: 'admin' | 'member' | 'viewer' };
 }
