@@ -69,36 +69,36 @@ import { Router, RouterLink } from '@angular/router';
           </div>
           <div class="widget-content">
             @for (task of displayedTasks(); track task.id) {
-            <mat-card class="task-card" [routerLink]="['/project', task.projectId, 'board']">
-              <mat-card-content>
-                <div class="task-header">
-                  <mat-icon
-                    [style.color]="getPriorityColor(task.priority)"
-                    class="priority-icon"
-                    [matTooltip]="task.priority"
-                  >
-                    {{ getPriorityIcon(task.priority) }}
-                  </mat-icon>
-                  <span class="status-badge" [ngClass]="task.statusColumnId">
-                    {{ formatStatus(task.statusColumnId) }}
-                  </span>
-                </div>
-                <div class="task-title">{{ task.title }}</div>
-                <div class="task-meta">
-                  <span class="project-name">{{ getProjectName(task.projectId) }}</span>
-                  @if (task.dueDate) {
-                  <span
-                    class="due-date"
-                    [class.overdue]="isOverdue(task.dueDate, task.statusColumnId)"
-                  >
-                    {{ getDaysRemaining(task.dueDate, task.statusColumnId) }}
-                  </span>
-                  }
-                </div>
-              </mat-card-content>
-            </mat-card>
+              <mat-card class="task-card" [routerLink]="['/project', task.projectId, 'board']">
+                <mat-card-content>
+                  <div class="task-header">
+                    <mat-icon
+                      [style.color]="getPriorityColor(task.priority)"
+                      class="priority-icon"
+                      [matTooltip]="task.priority"
+                    >
+                      {{ getPriorityIcon(task.priority) }}
+                    </mat-icon>
+                    <span class="status-badge" [ngClass]="task.statusColumnId">
+                      {{ formatStatus(task.statusColumnId) }}
+                    </span>
+                  </div>
+                  <div class="task-title">{{ task.title }}</div>
+                  <div class="task-meta">
+                    <span class="project-name">{{ getProjectName(task.projectId) }}</span>
+                    @if (task.dueDate) {
+                      <span
+                        class="due-date"
+                        [class.overdue]="isOverdue(task.dueDate, task.statusColumnId)"
+                      >
+                        {{ getDaysRemaining(task.dueDate, task.statusColumnId) }}
+                      </span>
+                    }
+                  </div>
+                </mat-card-content>
+              </mat-card>
             } @empty {
-            <div class="empty-state">No assigned tasks.</div>
+              <div class="empty-state">No assigned tasks.</div>
             }
           </div>
           <div class="widget-footer">
@@ -115,12 +115,12 @@ import { Router, RouterLink } from '@angular/router';
           </div>
           <div class="widget-content project-grid">
             @for (project of projectsStore.projects(); track project.id) {
-            <mat-card class="project-card" [routerLink]="['/project', project.id]">
-              <mat-card-content>
-                <div class="project-icon">{{ project.name.charAt(0).toUpperCase() }}</div>
-                <div class="project-name">{{ project.name }}</div>
-              </mat-card-content>
-            </mat-card>
+              <mat-card class="project-card" [routerLink]="['/project', project.id]">
+                <mat-card-content>
+                  <div class="project-icon">{{ project.name.charAt(0).toUpperCase() }}</div>
+                  <div class="project-name">{{ project.name }}</div>
+                </mat-card-content>
+              </mat-card>
             }
           </div>
         </div>
@@ -361,7 +361,7 @@ export class Home {
 
   // Stats Logic
   completedTasksCount = computed(
-    () => this.myTasksStore.issues().filter((i) => i.statusColumnId === 'done').length
+    () => this.myTasksStore.issues().filter((i) => i.statusColumnId === 'done').length,
   );
 
   // inprogressTasksCount = computed(() => this.myTasksStore.issues().filter(i => i.statusColumnId === 'in-progress').length);

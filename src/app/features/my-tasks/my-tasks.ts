@@ -102,7 +102,7 @@ import { Issue } from '../issue/issue.model';
         <ng-container matColumnDef="dueDate">
           <th mat-header-cell *matHeaderCellDef>Due Date</th>
           <td mat-cell *matCellDef="let issue">
-            {{ issue.dueDate ? (issue.dueDate | date : 'mediumDate') : '-' }}
+            {{ issue.dueDate ? (issue.dueDate | date: 'mediumDate') : '-' }}
           </td>
         </ng-container>
 
@@ -234,7 +234,7 @@ export class MyTasks {
         (issue) =>
           issue.title.toLowerCase().includes(search) ||
           issue.key?.toLowerCase().includes(search) ||
-          this.getProjectName(issue.projectId).toLowerCase().includes(search)
+          this.getProjectName(issue.projectId).toLowerCase().includes(search),
       );
     }
 

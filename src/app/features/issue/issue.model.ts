@@ -32,4 +32,5 @@ export interface Issue {
   isInBacklog?: boolean;
   dueDate?: string; // ISO string
   subtasks?: Subtask[];
+  isArchived?: boolean;
 }

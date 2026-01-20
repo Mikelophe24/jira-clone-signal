@@ -1,6 +1,12 @@
 import { Component, Inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import {
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+  MatDialogModule,
+  MatDialog,
+} from '@angular/material/dialog';
+import { IssueDialog } from '../../../issue/issue-dialog/issue-dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { Issue } from '../../../issue/issue.model';
 import { Sprint } from '../../sprint.model';
+import { RouterModule } from '@angular/router';
 
 export interface CompleteSprintDialogData {
   sprint: Sprint;
@@ -27,6 +34,7 @@ export interface CompleteSprintDialogData {
     MatFormFieldModule,
     FormsModule,
     MatIconModule,
+    RouterModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -42,66 +50,88 @@ export interface CompleteSprintDialogData {
       <h2 mat-dialog-title>Complete sprint</h2>
 
       <mat-dialog-content class="custom-content">
-        <div class="form-section">
-          <label class="field-label">Select a sprint</label>
-          <mat-form-field
-            appearance="outline"
-            class="full-width compact-form-field"
-            subscriptSizing="dynamic"
-          >
-            <mat-select [(ngModel)]="selectedSprintId" (selectionChange)="onSprintChange()">
-              @for (sprint of data.activeSprints; track sprint.id) {
-                <mat-option [value]="sprint.id">{{ sprint.name }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="summary-section">
-          <p>
-            This sprint contains
-            <strong>{{ completedIssuesCount }} completed work items</strong> and
-            <strong
-              >{{ incompleteIssuesCount }} open work item{{
-                incompleteIssuesCount !== 1 ? 's' : ''
-              }}</strong
-            >.
-          </p>
-
-          <ul class="info-list">
-            <li>Completed work items includes everything in the last column on the board, Done.</li>
-            <li>
-              Open work items includes everything from any other column on the board. Move these to
-              a new sprint or the backlog.
-            </li>
-          </ul>
-        </div>
-
-        @if (incompleteIssuesCount > 0) {
+        @if (uncompletedSubtasksIssues.length === 0) {
           <div class="form-section">
-            <label class="field-label">Move open work items to</label>
+            <label class="field-label">Select a sprint</label>
             <mat-form-field
               appearance="outline"
               class="full-width compact-form-field"
               subscriptSizing="dynamic"
             >
-              <mat-select [(ngModel)]="selectedDestinationId">
-                @if (data.futureSprints.length > 0) {
-                  <mat-option value="new-sprint">New sprint</mat-option>
-                  @for (sprint of data.futureSprints; track sprint.id) {
-                    <mat-option [value]="sprint.id">{{ sprint.name }}</mat-option>
-                  }
+              <mat-select [(ngModel)]="selectedSprintId" (selectionChange)="onSprintChange()">
+                @for (sprint of data.activeSprints; track sprint.id) {
+                  <mat-option [value]="sprint.id">{{ sprint.name }}</mat-option>
                 }
-                <mat-option value="backlog">Backlog</mat-option>
               </mat-select>
             </mat-form-field>
+          </div>
+
+          <div class="summary-section">
+            <p>
+              This sprint contains
+              <strong>{{ completedIssuesCount }} completed work items</strong> and
+              <strong
+                >{{ incompleteIssuesCount }} open work item{{
+                  incompleteIssuesCount !== 1 ? 's' : ''
+                }}</strong
+              >.
+            </p>
+
+            <ul class="info-list">
+              <li>
+                Completed work items includes everything in the last column on the board, Done.
+              </li>
+              <li>
+                Open work items includes everything from any other column on the board. Move these
+                to a new sprint or the backlog.
+              </li>
+            </ul>
+          </div>
+
+          @if (incompleteIssuesCount > 0) {
+            <div class="form-section">
+              <label class="field-label">Move open work items to</label>
+              <mat-form-field
+                appearance="outline"
+                class="full-width compact-form-field"
+                subscriptSizing="dynamic"
+              >
+                <mat-select [(ngModel)]="selectedDestinationId">
+                  @if (data.futureSprints.length > 0) {
+                    <mat-option value="new-sprint">New sprint</mat-option>
+                    @for (sprint of data.futureSprints; track sprint.id) {
+                      <mat-option [value]="sprint.id">{{ sprint.name }}</mat-option>
+                    }
+                  }
+                  <mat-option value="backlog">Backlog</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+          }
+        } @else {
+          <div class="error-section">
+            <p>
+              Sprint cannot be completed as there are incomplete subtasks on the following issues:
+            </p>
+            <ul class="issue-list">
+              @for (issue of uncompletedSubtasksIssues; track issue.id) {
+                <li>
+                  <a (click)="openIssueDialog(issue)" class="issue-link" style="cursor: pointer;">
+                    {{ issue.key }}
+                  </a>
+                  - {{ issue.title }}
+                </li>
+              }
+            </ul>
           </div>
         }
       </mat-dialog-content>
 
       <mat-dialog-actions align="end" class="custom-actions">
         <button mat-button mat-dialog-close>Cancel</button>
-        <button mat-flat-button color="primary" (click)="complete()">Complete sprint</button>
+        @if (uncompletedSubtasksIssues.length === 0) {
+          <button mat-flat-button color="primary" (click)="complete()">Complete sprint</button>
+        }
       </mat-dialog-actions>
     </div>
   `,
@@ -234,6 +264,29 @@ export interface CompleteSprintDialogData {
       button[mat-flat-button] {
         background-color: #0052cc;
       }
+
+      .error-section {
+        color: var(--jira-text);
+        margin-bottom: 24px;
+        p {
+          margin-bottom: 12px;
+          margin-top: 0;
+        }
+      }
+      .issue-list {
+        padding-left: 20px;
+        margin: 0;
+        li {
+          margin-bottom: 8px;
+        }
+      }
+      .issue-link {
+        color: #0052cc;
+        text-decoration: none;
+        &:hover {
+          text-decoration: underline;
+        }
+      }
     `,
   ],
 })
@@ -242,10 +295,12 @@ export class CompleteSprintDialog {
   incompleteIssuesCount = 0;
   selectedDestinationId: string = 'new-sprint';
   selectedSprintId: string;
+  uncompletedSubtasksIssues: Issue[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<CompleteSprintDialog>,
     @Inject(MAT_DIALOG_DATA) public data: CompleteSprintDialogData,
+    private dialog: MatDialog,
   ) {
     this.selectedSprintId = data.sprint.id;
     this.updateCounts();
@@ -266,9 +321,36 @@ export class CompleteSprintDialog {
     const sprintIssues = this.data.allIssues.filter((i) => i.sprintId === this.selectedSprintId);
     this.completedIssuesCount = sprintIssues.filter((i) => i.statusColumnId === 'done').length;
     this.incompleteIssuesCount = sprintIssues.length - this.completedIssuesCount;
+
+    // Check for issues with incomplete subtasks
+    this.uncompletedSubtasksIssues = sprintIssues.filter((issue) => {
+      if (!issue.subtasks || issue.subtasks.length === 0) return false;
+      return issue.subtasks.some((s) => !s.completed);
+    });
+  }
+
+  openIssueDialog(issue: Issue) {
+    const dialogRef = this.dialog.open(IssueDialog, {
+      width: '800px',
+      data: {
+        issue: issue,
+      },
+      autoFocus: false,
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        // Issue was saved/updated
+        // Close the complete sprint dialog so user returns to backlog
+        // They can click "Complete Sprint" again to re-validate
+        this.dialogRef.close();
+      }
+    });
   }
 
   complete() {
+    if (this.uncompletedSubtasksIssues.length > 0) return;
+
     const destinationId =
       this.selectedDestinationId === 'backlog' ? null : this.selectedDestinationId;
     this.dialogRef.close({

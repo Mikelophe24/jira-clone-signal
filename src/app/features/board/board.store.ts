@@ -142,7 +142,8 @@ export const BoardStore = signalStore(
             }
             return issueService.getIssues(projectId).pipe(
               tap((issues) => {
-                patchState(store, { issues });
+                const activeIssues = issues.filter((i) => !i.isArchived);
+                patchState(store, { issues: activeIssues });
                 store.setLoading(false);
               }),
               catchError((error) => {

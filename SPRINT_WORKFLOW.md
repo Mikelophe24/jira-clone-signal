@@ -83,6 +83,8 @@ export interface Sprint {
 
 ### Issue Model (các field liên quan Sprint)
 
+
+
 ```typescript
 export interface Issue {
   id?: string;
@@ -858,10 +860,14 @@ sprintIssuesMap = computed(() => {
 
 ```javascript
 match /sprints/{sprintId} {
-  allow read: if isProjectMember(resource.data.projectId);
-  allow create: if isProjectAdmin(request.resource.data.projectId);
-  allow update: if isProjectAdmin(resource.data.projectId);
-  allow delete: if isProjectAdmin(resource.data.projectId);
+  allow read: if signedIn() && isProjectMember(resource.data.projectId);
+
+  // Member (not Viewer) can create/update sprints (e.g. start/complete status)
+  allow create: if signedIn() && isProjectMember(request.resource.data.projectId) && !isProjectViewer(request.resource.data.projectId);
+  allow update: if signedIn() && isProjectMember(resource.data.projectId) && !isProjectViewer(resource.data.projectId);
+
+  // Only Admin can delete sprints
+  allow delete: if signedIn() && isProjectAdmin(resource.data.projectId);
 }
 ```
 
@@ -869,16 +875,41 @@ match /sprints/{sprintId} {
 
 ```javascript
 match /issues/{issueId} {
-  allow read: if isProjectMember(resource.data.projectId);
-  allow create: if isProjectMember(request.resource.data.projectId);
-  allow update: if isProjectMember(resource.data.projectId);
-  allow delete: if isProjectAdmin(resource.data.projectId);
+  allow read: if signedIn() && (
+    resource.data.assigneeId == request.auth.uid ||
+    isProjectMember(resource.data.projectId)
+  );
+
+  allow create: if signedIn()
+                && isProjectMember(request.resource.data.projectId)
+                && !isProjectViewer(request.resource.data.projectId)
+                && isValidIssue();
+
+  allow update: if signedIn()
+                && isProjectMember(resource.data.projectId)
+                && !isProjectViewer(resource.data.projectId)
+                && (
+                  // Admin/Assignee/Reporter can update everything
+                  (
+                    resource.data.assigneeId == request.auth.uid ||
+                    resource.data.reporterId == request.auth.uid ||
+                    isProjectAdmin(resource.data.projectId)
+                  ) ||
+                  // Members can ONLY update status & order (drag & drop)
+                  !request.resource.data.diff(resource.data).affectedKeys().hasAny(['title', 'description', 'type', 'priority', 'reporterId', 'key'])
+                );
+
+  allow delete: if signedIn() && (
+    resource.data.reporterId == request.auth.uid ||
+    isProjectAdmin(resource.data.projectId)
+  );
 }
 ```
 
 ### Helper Functions
 
 ```javascript
+// Check if user is a member (Project Owner, Member list, or has any Role)
 function isProjectMember(projectId) {
   let project = get(/databases/$(database)/documents/projects/$(projectId));
   return project != null && (
@@ -888,12 +919,27 @@ function isProjectMember(projectId) {
   );
 }
 
+// Check if user is Admin (Owner or role='admin')
 function isProjectAdmin(projectId) {
   let project = get(/databases/$(database)/documents/projects/$(projectId));
   return project != null && (
     project.data.ownerId == request.auth.uid ||
-    (project.data.keys().hasAny(['roles']) && project.data.roles[request.auth.uid] == 'admin')
+    (
+      project.data.keys().hasAny(['roles']) &&
+      project.data.roles.keys().hasAny([request.auth.uid]) &&
+      project.data.roles[request.auth.uid] == 'admin'
+    )
   );
+}
+
+// Check if user is Viewer (role='viewer')
+function isProjectViewer(projectId) {
+   let project = get(/databases/$(database)/documents/projects/$(projectId));
+   return project != null &&
+          project.data.ownerId != request.auth.uid &&
+          project.data.keys().hasAny(['roles']) &&
+          project.data.roles.keys().hasAny([request.auth.uid]) &&
+          project.data.roles[request.auth.uid] == 'viewer';
 }
 ```
 

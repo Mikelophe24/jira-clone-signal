@@ -1,4 +1,4 @@
-import { Component, Inject, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Inject, inject, ChangeDetectionStrategy, computed } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -118,8 +118,8 @@ export interface IssueDialogData {
           <mat-form-field appearance="outline">
             <mat-label>Sprint</mat-label>
             <mat-select formControlName="sprintId">
-              <mat-option [value]="null">Backlog</mat-option>
-              @for (sprint of sprintStore.sprints(); track sprint.id) {
+              <mat-option value="backlog">Backlog</mat-option>
+              @for (sprint of selectableSprints(); track sprint.id) {
                 <mat-option [value]="sprint.id">
                   {{ sprint.name }}
                 </mat-option>
@@ -504,6 +504,10 @@ export class IssueDialog {
   private fb = inject(FormBuilder);
   issueService = inject(IssueService);
 
+  selectableSprints = computed(() =>
+    this.sprintStore.sprints().filter((s) => s.status !== 'completed'),
+  );
+
   form!: FormGroup; // Reactive Form
 
   // Auxiliary state for things not in the main form or complex UI handling
@@ -531,7 +535,7 @@ export class IssueDialog {
         priority: data.issue.priority,
         assigneeId: data.issue.assigneeId || null,
         statusColumnId: data.issue.statusColumnId || data.statusColumnId || 'todo',
-        sprintId: data.issue.sprintId || null,
+        sprintId: data.issue.sprintId || 'backlog',
         dueDate: data.issue.dueDate ? new Date(data.issue.dueDate) : null,
       });
 
@@ -554,7 +558,7 @@ export class IssueDialog {
       priority: ['medium' as IssuePriority, [Validators.required]],
       assigneeId: [null as string | null],
       statusColumnId: ['todo'],
-      sprintId: [null as string | null],
+      sprintId: ['backlog' as string | null],
       dueDate: [null as Date | null],
     });
   }
@@ -691,6 +695,11 @@ export class IssueDialog {
       if (currentUser) {
         result.reporterId = currentUser.uid;
       }
+    }
+
+    // Convert 'backlog' string to null
+    if (result.sprintId === 'backlog') {
+      result.sprintId = null;
     }
 
     // Auto-set isInBacklog based on sprint

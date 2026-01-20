@@ -549,12 +549,14 @@ export class Backlog {
   completeSprint(sprint: any) {
     const issues = this.getSprintIssues(sprint.id);
     const futureSprints = this.sprintStore.futureSprints();
+    const activeSprints = this.sprintStore.activeSprints();
 
     const dialogRef = this.dialog.open(CompleteSprintDialog, {
       width: '500px',
       data: {
         sprint,
-        issues,
+        activeSprints,
+        allIssues: this.boardStore.issues(),
         futureSprints,
       },
     });
@@ -566,16 +568,44 @@ export class Backlog {
 
         const destinationId = result.destinationId;
         const incompleteIssues = issues.filter((i) => i.statusColumnId !== 'done');
+        const completedIssues = issues.filter((i) => i.statusColumnId === 'done');
 
+        console.log('Complete Sprint - Sprint ID:', sprint.id);
+        console.log('Complete Sprint - Total issues:', issues.length);
+        console.log('Complete Sprint - Incomplete issues:', incompleteIssues.length);
+        console.log('Complete Sprint - Completed issues:', completedIssues.length);
+
+        let updates: any[] = [];
+
+        // 1. Move incomplete issues to new sprint or backlog
         if (incompleteIssues.length > 0) {
-          const updates = incompleteIssues.map((i) => ({
-            id: i.id,
-            data: {
-              sprintId: destinationId, // null (backlog) or sprintId (future sprint)
-              isInBacklog: true, // Always true because it leaves the board (either to backlog or future sprint)
-            },
-          }));
+          updates = updates.concat(
+            incompleteIssues.map((i) => ({
+              id: i.id,
+              data: {
+                sprintId: destinationId, // null (backlog) or sprintId (future sprint)
+                isInBacklog: true, // Always true because it leaves the board
+              },
+            })),
+          );
+        }
 
+        // 2. Archive completed issues (System Soft Delete)
+        // Keep them in the completed sprint (historical data) but hide them from active views
+        if (completedIssues.length > 0) {
+          updates = updates.concat(
+            completedIssues.map((i) => ({
+              id: i.id,
+              data: {
+                isArchived: true,
+              },
+            })),
+          );
+        }
+
+        console.log('Complete Sprint - Updates to send:', updates);
+
+        if (updates.length > 0) {
           this.issueService.batchUpdateIssues(updates);
         }
       }

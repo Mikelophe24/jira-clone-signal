@@ -35,7 +35,9 @@ export const MyTasksStore = signalStore(
         }),
         tap((issues) => {
           console.log('Issues found:', issues);
-          patchState(store, { issues: issues, loading: false });
+          // Filter out archived (soft-deleted) issues
+          const activeIssues = issues.filter((i) => !i.isArchived);
+          patchState(store, { issues: activeIssues, loading: false });
         }),
       ),
     ),

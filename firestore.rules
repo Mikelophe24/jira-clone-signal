@@ -4,147 +4,180 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
-    // --- Helper Functions ---
+    // ===== Helpers =====
 
-    // Check if user is a member of the project
+    function getProject(projectId) {
+      return get(/databases/$(database)/documents/projects/$(projectId));
+    }
+
     function isProjectMember(projectId) {
-      let project = get(/databases/$(database)/documents/projects/$(projectId));
+      let project = getProject(projectId);
       return project != null && (
-        // Owner luôn là member (kiểm tra đầu tiên)
+        // owner is member
         project.data.ownerId == request.auth.uid ||
-        // Hoặc có trong memberIds
-        (project.data.keys().hasAny(['memberIds']) && project.data.memberIds.hasAny([request.auth.uid])) || 
-        // Hoặc có role được gán
-        (project.data.keys().hasAny(['roles']) && project.data.roles.keys().hasAny([request.auth.uid]))
+
+        // memberIds contains uid (guard key exists)
+        (project.data.keys().hasAny(['memberIds']) &&
+         project.data.memberIds.hasAny([request.auth.uid])) ||
+
+        // roles map contains uid (guard key exists)
+        (project.data.keys().hasAny(['roles']) &&
+         project.data.roles.keys().hasAny([request.auth.uid]))
       );
     }
-    
-    // Check if user is the OWNER of the project
-    function isProjectOwner(projectId) {
-      let project = get(/databases/$(database)/documents/projects/$(projectId));
-      return project != null && project.data.ownerId == request.auth.uid;
-    }
 
-    // Check if user is ADMIN (owner or role=admin)
     function isProjectAdmin(projectId) {
-      let project = get(/databases/$(database)/documents/projects/$(projectId));
+      let project = getProject(projectId);
       return project != null && (
-        // Owner luôn là admin (kiểm tra đầu tiên)
+        // owner is admin
         project.data.ownerId == request.auth.uid ||
-        // Hoặc có role admin (phải check key tồn tại trước khi truy cập giá trị)
         (
-          project.data.keys().hasAny(['roles']) && 
+          project.data.keys().hasAny(['roles']) &&
           project.data.roles.keys().hasAny([request.auth.uid]) &&
           project.data.roles[request.auth.uid] == 'admin'
         )
       );
     }
-    
-    // Check if user is VIEWER
+
     function isProjectViewer(projectId) {
-       let project = get(/databases/$(database)/documents/projects/$(projectId));
-       return project != null && 
-              // Owner KHÔNG BAO GIỜ là viewer (return false ngay)
-              project.data.ownerId != request.auth.uid &&
-              // Check roles tồn tại
-              project.data.keys().hasAny(['roles']) && 
-              // Quan trọng: Check user có trong roles map không trước khi đọc
-              project.data.roles.keys().hasAny([request.auth.uid]) && 
-              project.data.roles[request.auth.uid] == 'viewer';
+      let project = getProject(projectId);
+      return project != null &&
+        // owner never viewer
+        project.data.ownerId != request.auth.uid &&
+        project.data.keys().hasAny(['roles']) &&
+        project.data.roles.keys().hasAny([request.auth.uid]) &&
+        project.data.roles[request.auth.uid] == 'viewer';
     }
 
-    // Validate Project Schema on Create
+    function isInvited(project) {
+      return project.data.keys().hasAny(['invitedMemberIds']) &&
+             project.data.invitedMemberIds != null &&
+             project.data.invitedMemberIds.hasAny([request.auth.uid]);
+    }
+
     function isValidNewProject() {
       let data = request.resource.data;
       return data.keys().hasAll(['name', 'key', 'ownerId', 'memberIds'])
         && data.name is string && data.name.size() > 0
         && data.key is string && data.key.size() > 0
         && data.ownerId == request.auth.uid
+        && data.memberIds is list
         && data.memberIds.hasAll([request.auth.uid]);
     }
 
-    // Validate Issue Schema
     function isValidIssue() {
       let data = request.resource.data;
-      // Basic checks: title exists and is not empty, type is valid
       return data.title is string && data.title.size() > 0
-             && (!data.keys().hasAny(['type']) || data.type in ['story', 'bug', 'task']);
+        && (!data.keys().hasAny(['type']) || data.type in ['story', 'bug', 'task']);
     }
 
-    // Prevent changing immutable fields (projectId)
     function notChangingProjectId() {
       return request.resource.data.projectId == resource.data.projectId;
     }
 
-    // --- Rules ---
+    // ===== Rules =====
 
     match /projects/{projectId} {
-      // Read: Users can read a project if they are in the memberIds list OR invitedMemberIds
+
+      // Read: member OR invited OR has role in roles map
       allow read: if signedIn() && (
-        resource.data.memberIds.hasAny([request.auth.uid]) ||
-        (resource.data.invitedMemberIds != null && resource.data.invitedMemberIds.hasAny([request.auth.uid]))
+        resource.data.ownerId == request.auth.uid ||
+        (resource.data.keys().hasAny(['memberIds']) &&
+         resource.data.memberIds.hasAny([request.auth.uid])) ||
+        (resource.data.keys().hasAny(['roles']) &&
+         resource.data.roles.keys().hasAny([request.auth.uid])) ||
+        (resource.data.keys().hasAny(['invitedMemberIds']) &&
+         resource.data.invitedMemberIds != null &&
+         resource.data.invitedMemberIds.hasAny([request.auth.uid]))
       );
-      
-      // Strict Create: Must set self as owner and member
+
+      // Create: strict schema
       allow create: if signedIn() && isValidNewProject();
-      
+
       // Update:
-      // 1. Owner has full write (except changing ownerId to keep it simple)
-      // 2. Members/Invited users can update ONLY non-restricted fields (cannot change name, key, or ownerId)
+      // - Owner: full update BUT cannot change ownerId (and optionally name/key if you want)
+      // - Member/Invited: cannot change name/key/ownerId
       allow update: if signedIn() && (
-        resource.data.ownerId == request.auth.uid || 
+        (
+          resource.data.ownerId == request.auth.uid &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId'])
+        ) ||
         (
           (
-            resource.data.memberIds.hasAny([request.auth.uid]) ||
-            (resource.data.invitedMemberIds != null && resource.data.invitedMemberIds.hasAny([request.auth.uid]))
+            (resource.data.keys().hasAny(['memberIds']) &&
+             resource.data.memberIds.hasAny([request.auth.uid])) ||
+            (
+              resource.data.keys().hasAny(['invitedMemberIds']) &&
+              resource.data.invitedMemberIds != null &&
+              resource.data.invitedMemberIds.hasAny([request.auth.uid])
+            )
           ) &&
           !request.resource.data.diff(resource.data).affectedKeys().hasAny(['name', 'key', 'ownerId'])
         )
       );
-      
+
+      // Delete: only owner
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-
     match /issues/{issueId} {
+
       allow read: if signedIn() && (
-        resource.data.assigneeId == request.auth.uid || 
+        resource.data.assigneeId == request.auth.uid ||
         isProjectMember(resource.data.projectId)
       );
 
-      allow create: if signedIn() 
-                    && isProjectMember(request.resource.data.projectId)
-                    && !isProjectViewer(request.resource.data.projectId)
-                    && isValidIssue();
+      allow create: if signedIn()
+        && isProjectMember(request.resource.data.projectId)
+        && !isProjectViewer(request.resource.data.projectId)
+        && isValidIssue();
 
-      allow update: if signedIn() 
-                    && isProjectMember(resource.data.projectId)
-                    && !isProjectViewer(resource.data.projectId)
-                    && notChangingProjectId()
-                    && (
-                      // 1. Assignee, Reporter hoặc Project Owner/Admin có quyền sửa mọi thứ
-                      (
-                        resource.data.assigneeId == request.auth.uid || 
-                        resource.data.reporterId == request.auth.uid || 
-                        isProjectAdmin(resource.data.projectId)
-                      ) ||
-                      // 2. Member bình thường CHỈ được phép đổi status và order (kéo thả)
-                      // Chặn thay đổi title, description, priority, type...
-                      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['title', 'description', 'type', 'priority', 'reporterId', 'key'])
-                    );
+      // Update:
+      // - Base: must be member, not viewer, not changing projectId
+      // - Assignee/Reporter/Admin: can update anything (except projectId already blocked)
+      // - Member thường: ONLY allowed to change status & order
+      allow update: if signedIn()
+        && isProjectMember(resource.data.projectId)
+        && !isProjectViewer(resource.data.projectId)
+        && notChangingProjectId()
+        && (
+          (
+            resource.data.assigneeId == request.auth.uid ||
+            resource.data.reporterId == request.auth.uid ||
+            isProjectAdmin(resource.data.projectId)
+          ) ||
+          (
+            // Strict: only status & order
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'order'])
+          )
+        );
 
       allow delete: if signedIn() && (
-        resource.data.reporterId == request.auth.uid || 
+        resource.data.reporterId == request.auth.uid ||
         isProjectAdmin(resource.data.projectId)
       );
     }
 
     match /sprints/{sprintId} {
+
       allow read: if signedIn() && isProjectMember(resource.data.projectId);
-      // Chỉ Admin mới được tạo/xóa/sửa cấu hình Sprint
-      // Member có thể update status (Start/Complete) -> Tạm thời cho member update để chạy luồng Sprint
-      allow create: if signedIn() && isProjectMember(request.resource.data.projectId) && !isProjectViewer(request.resource.data.projectId);
-      allow update: if signedIn() && isProjectMember(resource.data.projectId) && !isProjectViewer(resource.data.projectId);
+
+      // Strict: only admin can create/delete
+      allow create: if signedIn()
+        && isProjectAdmin(request.resource.data.projectId)
+        && !isProjectViewer(request.resource.data.projectId);
+
+      // Update:
+      // - Admin: can update anything
+      // - Member: only allowed to change status (Start/Complete)
+      allow update: if signedIn()
+        && isProjectMember(resource.data.projectId)
+        && !isProjectViewer(resource.data.projectId)
+        && (
+          isProjectAdmin(resource.data.projectId) ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        );
+
       allow delete: if signedIn() && isProjectAdmin(resource.data.projectId);
     }
 
