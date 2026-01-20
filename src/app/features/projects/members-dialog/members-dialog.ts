@@ -35,30 +35,35 @@ import { CommonModule } from '@angular/common';
       <mat-list>
         <h3 mat-subheader>Current Members</h3>
         @for (member of store.members(); track member.uid) {
-        <mat-list-item>
-          <mat-icon matListItemIcon>person</mat-icon>
-          <div matListItemTitle>{{ member.displayName || member.email }}</div>
-          <div matListItemLine>{{ member.email }}</div>
+          <mat-list-item>
+            <mat-icon matListItemIcon>person</mat-icon>
+            <div matListItemTitle>
+              {{ member.displayName || member.email }}
+              @if (member.uid === store.selectedProject()?.ownerId) {
+                <span class="owner-badge">(Owner)</span>
+              }
+            </div>
+            <div matListItemLine>{{ member.email }}</div>
 
-          <!-- Actions -->
-          <div matListItemMeta>
-            <!-- Owner removes other members -->
-            @if (isOwner && member.uid !== currentUser?.uid) {
-            <button
-              mat-icon-button
-              (click)="removeMember(member.uid)"
-              color="warn"
-              matTooltip="Remove member"
-            >
-              <mat-icon>remove_circle_outline</mat-icon>
-            </button>
-            }
-            <!-- Member leaves project -->
-            @if (!isOwner && member.uid === currentUser?.uid) {
-            <button mat-button color="warn" (click)="leaveProject(member.uid)">Leave</button>
-            }
-          </div>
-        </mat-list-item>
+            <!-- Actions -->
+            <div matListItemMeta>
+              <!-- Owner removes other members -->
+              @if (isOwner && member.uid !== currentUser?.uid) {
+                <button
+                  mat-icon-button
+                  (click)="removeMember(member.uid)"
+                  color="warn"
+                  matTooltip="Remove member"
+                >
+                  <mat-icon>remove_circle_outline</mat-icon>
+                </button>
+              }
+              <!-- Member leaves project -->
+              @if (!isOwner && member.uid === currentUser?.uid) {
+                <button mat-button color="warn" (click)="leaveProject(member.uid)">Leave</button>
+              }
+            </div>
+          </mat-list-item>
         }
       </mat-list>
 
@@ -66,64 +71,65 @@ import { CommonModule } from '@angular/common';
 
       <!-- Add New Member (Only Owner) -->
       @if (isOwner) {
-      <h3>Add Member</h3>
-      <div class="add-form-container">
-        <mat-form-field appearance="outline" class="email-input">
-          <mat-label>User Email</mat-label>
-          <input matInput [(ngModel)]="emailToAdd" placeholder="friend@example.com" />
-        </mat-form-field>
-
-        <div class="role-selector-row">
-          <mat-form-field appearance="outline" class="role-input">
-            <mat-label>Role</mat-label>
-            <mat-select [(ngModel)]="selectedRole">
-              <mat-select-trigger>
-                {{ selectedRole | titlecase }}
-              </mat-select-trigger>
-
-              <mat-option value="admin">
-                <div class="role-option">
-                  <span class="role-title">Administrator</span>
-                  <span class="role-desc"
-                    >Admins can do most things, like update settings and add other admins.</span
-                  >
-                </div>
-              </mat-option>
-              <mat-option value="member">
-                <div class="role-option">
-                  <span class="role-title">Member</span>
-                  <span class="role-desc"
-                    >Members are part of the team, and can add, edit, and collaborate on all
-                    work.</span
-                  >
-                </div>
-              </mat-option>
-              <mat-option value="viewer">
-                <div class="role-option">
-                  <span class="role-title">Viewer</span>
-                  <span class="role-desc"
-                    >Viewers can search through, view, and comment, but not much else.</span
-                  >
-                </div>
-              </mat-option>
-            </mat-select>
+        <h3>Add Member</h3>
+        <div class="add-form-container">
+          <mat-form-field appearance="outline" class="email-input">
+            <mat-label>User Email</mat-label>
+            <input matInput [(ngModel)]="emailToAdd" placeholder="friend@example.com" />
           </mat-form-field>
+
+          <div class="role-selector-row">
+            <mat-form-field appearance="outline" class="role-input">
+              <mat-label>Role</mat-label>
+              <mat-select [(ngModel)]="selectedRole">
+                <mat-select-trigger>
+                  {{ selectedRole | titlecase }}
+                </mat-select-trigger>
+
+                <mat-option value="admin">
+                  <div class="role-option">
+                    <span class="role-title">Administrator</span>
+                    <span class="role-desc"
+                      >Admins can do most things, like update settings and add other admins.</span
+                    >
+                  </div>
+                </mat-option>
+                <mat-option value="member">
+                  <div class="role-option">
+                    <span class="role-title">Member</span>
+                    <span class="role-desc"
+                      >Members are part of the team, and can add, edit, and collaborate on all
+                      work.</span
+                    >
+                  </div>
+                </mat-option>
+                <mat-option value="viewer">
+                  <div class="role-option">
+                    <span class="role-title">Viewer</span>
+                    <span class="role-desc"
+                      >Viewers can search through, view, and comment, but not much else.</span
+                    >
+                  </div>
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
         </div>
-      </div>
-      } @if (error) {
-      <p class="error">{{ error }}</p>
+      }
+      @if (error) {
+        <p class="error">{{ error }}</p>
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       @if (isOwner) {
-      <button
-        mat-raised-button
-        color="primary"
-        (click)="addMember()"
-        [disabled]="store.loading() || !emailToAdd"
-      >
-        <mat-icon>person_add</mat-icon> Invite
-      </button>
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="addMember()"
+          [disabled]="store.loading() || !emailToAdd"
+        >
+          <mat-icon>person_add</mat-icon> Invite
+        </button>
       }
       <button mat-button mat-dialog-close>Close</button>
     </mat-dialog-actions>
@@ -183,6 +189,12 @@ import { CommonModule } from '@angular/common';
       .error {
         color: #d32f2f;
         margin-top: 16px;
+      }
+      .owner-badge {
+        font-size: 12px;
+        color: #0052cc;
+        margin-left: 8px;
+        font-weight: 500;
       }
     `,
   ],

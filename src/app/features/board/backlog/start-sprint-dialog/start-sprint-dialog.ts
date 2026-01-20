@@ -127,7 +127,7 @@ export class StartSprintDialog {
 
   constructor(
     private dialogRef: MatDialogRef<StartSprintDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: { sprint: Sprint; issueCount: number }
+    @Inject(MAT_DIALOG_DATA) public data: { sprint: Sprint; issueCount: number },
   ) {
     // Default duration: 2 weeks
     const startDate = new Date();
@@ -138,15 +138,21 @@ export class StartSprintDialog {
       name: [data.sprint.name, Validators.required],
       duration: ['2', Validators.required],
       startDate: [startDate, Validators.required],
-      endDate: [endDate, Validators.required],
+      endDate: [{ value: endDate, disabled: true }, Validators.required], // Disabled by default
       goal: [data.sprint.goal || ''],
     });
   }
 
   onDurationChange() {
     const duration = this.form.get('duration')?.value;
-    if (duration === 'custom') return;
+    const endDateControl = this.form.get('endDate');
 
+    if (duration === 'custom') {
+      endDateControl?.enable();
+      return;
+    }
+
+    endDateControl?.disable();
     const weeks = parseInt(duration, 10);
     const startDate = this.form.get('startDate')?.value;
 
@@ -163,7 +169,7 @@ export class StartSprintDialog {
 
   save() {
     if (this.form.valid) {
-      const formValue = this.form.value;
+      const formValue = this.form.getRawValue(); // Use getRawValue to include disabled controls
       const updates = {
         name: formValue.name,
         startDate: formValue.startDate ? formValue.startDate.toISOString() : null,

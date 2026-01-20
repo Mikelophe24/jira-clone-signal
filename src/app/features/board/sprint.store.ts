@@ -29,6 +29,7 @@ export const SprintStore = signalStore(
   withState(initialState),
   withComputed(({ sprints }) => ({
     activeSprint: computed(() => sprints().find((s) => s.status === 'active')),
+    activeSprints: computed(() => sprints().filter((s) => s.status === 'active')),
     futureSprints: computed(() => sprints().filter((s) => s.status === 'future')),
     completedSprints: computed(() => sprints().filter((s) => s.status === 'completed')),
   })),
@@ -36,7 +37,7 @@ export const SprintStore = signalStore(
     (
       store,
       sprintService: SprintService = inject(SprintService),
-      errorService: ErrorNotificationService = inject(ErrorNotificationService)
+      errorService: ErrorNotificationService = inject(ErrorNotificationService),
     ) => ({
       loadSprints: rxMethod<string | null>(
         pipe(
@@ -57,10 +58,10 @@ export const SprintStore = signalStore(
                 errorService.showError(errorMessage);
                 store.setLoading(false);
                 return of([]);
-              })
+              }),
             );
-          })
-        )
+          }),
+        ),
       ),
       addSprint: async (sprint: Partial<Sprint>) => {
         try {
@@ -68,9 +69,10 @@ export const SprintStore = signalStore(
           if (!sprint.status) {
             sprint.status = 'future';
           }
-          await sprintService.addSprint(sprint);
+          return await sprintService.addSprint(sprint);
         } catch (err: any) {
           errorService.showError(err?.message || 'Failed to create sprint');
+          return undefined;
         }
       },
       updateSprint: async (id: string, updates: Partial<Sprint>) => {
@@ -101,6 +103,6 @@ export const SprintStore = signalStore(
           errorService.showError(err?.message || 'Failed to complete sprint');
         }
       },
-    })
-  )
+    }),
+  ),
 );

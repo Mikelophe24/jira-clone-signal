@@ -7,12 +7,14 @@ service cloud.firestore {
     // --- Helper Functions ---
 
     // Check if user is a member of the project
-    // Check if user is a member of the project
     function isProjectMember(projectId) {
       let project = get(/databases/$(database)/documents/projects/$(projectId));
       return project != null && (
+        // Owner luôn là member (kiểm tra đầu tiên)
         project.data.ownerId == request.auth.uid ||
+        // Hoặc có trong memberIds
         (project.data.keys().hasAny(['memberIds']) && project.data.memberIds.hasAny([request.auth.uid])) || 
+        // Hoặc có role được gán
         (project.data.keys().hasAny(['roles']) && project.data.roles.keys().hasAny([request.auth.uid]))
       );
     }
@@ -27,8 +29,14 @@ service cloud.firestore {
     function isProjectAdmin(projectId) {
       let project = get(/databases/$(database)/documents/projects/$(projectId));
       return project != null && (
+        // Owner luôn là admin (kiểm tra đầu tiên)
         project.data.ownerId == request.auth.uid ||
-        (project.data.keys().hasAny(['roles']) && project.data.roles[request.auth.uid] == 'admin')
+        // Hoặc có role admin (phải check key tồn tại trước khi truy cập giá trị)
+        (
+          project.data.keys().hasAny(['roles']) && 
+          project.data.roles.keys().hasAny([request.auth.uid]) &&
+          project.data.roles[request.auth.uid] == 'admin'
+        )
       );
     }
     
@@ -36,7 +44,12 @@ service cloud.firestore {
     function isProjectViewer(projectId) {
        let project = get(/databases/$(database)/documents/projects/$(projectId));
        return project != null && 
+              // Owner KHÔNG BAO GIỜ là viewer (return false ngay)
+              project.data.ownerId != request.auth.uid &&
+              // Check roles tồn tại
               project.data.keys().hasAny(['roles']) && 
+              // Quan trọng: Check user có trong roles map không trước khi đọc
+              project.data.roles.keys().hasAny([request.auth.uid]) && 
               project.data.roles[request.auth.uid] == 'viewer';
     }
 

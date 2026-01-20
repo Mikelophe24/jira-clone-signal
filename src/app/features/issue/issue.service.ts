@@ -24,7 +24,7 @@ export class IssueService {
     const q = query(this.issuesCollection, where('projectId', '==', projectId));
     return runInInjectionContext(
       this.injector,
-      () => collectionData(q, { idField: 'id' }) as Observable<Issue[]>
+      () => collectionData(q, { idField: 'id' }) as Observable<Issue[]>,
     );
   }
 
@@ -32,7 +32,7 @@ export class IssueService {
     const q = query(this.issuesCollection, where('assigneeId', '==', userId));
     return runInInjectionContext(
       this.injector,
-      () => collectionData(q, { idField: 'id' }) as Observable<Issue[]>
+      () => collectionData(q, { idField: 'id' }) as Observable<Issue[]>,
     );
   }
 
@@ -60,7 +60,7 @@ export class IssueService {
   }
 
   moveToBacklog(issueId: string) {
-    return this.updateIssue(issueId, { isInBacklog: true });
+    return this.updateIssue(issueId, { isInBacklog: true, sprintId: null });
   }
 
   moveToBoard(issueId: string) {
@@ -81,7 +81,7 @@ export class IssueService {
     const q = query(
       this.issuesCollection,
       where('projectId', '==', projectId),
-      where('assigneeId', '==', userId)
+      where('assigneeId', '==', userId),
     );
     const snapshot = await getDocs(q);
     if (snapshot.empty) return;

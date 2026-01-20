@@ -46,7 +46,7 @@ export const ProjectsStore = signalStore(
       store,
       projectsService = inject(ProjectsService),
       issueService = inject(IssueService),
-      errorService = inject(ErrorNotificationService)
+      errorService = inject(ErrorNotificationService),
     ) => ({
       loadProjects: rxMethod<string | null>(
         pipe(
@@ -74,10 +74,10 @@ export const ProjectsStore = signalStore(
                 console.error('Error loading projects:', err);
                 errorService.showError(errorMessage);
                 return of([]);
-              })
+              }),
             );
-          })
-        )
+          }),
+        ),
       ),
       loadInvites: rxMethod<string | null>(
         pipe(
@@ -97,13 +97,13 @@ export const ProjectsStore = signalStore(
                 const existingOwners = store.projectOwners();
                 // Simple merge distinct by UID
                 const merged = [...existingOwners, ...newOwners].filter(
-                  (v, i, a) => a.findIndex((t) => t.uid === v.uid) === i
+                  (v, i, a) => a.findIndex((t) => t.uid === v.uid) === i,
                 );
                 patchState(store, { projectOwners: merged });
-              })
+              }),
             );
-          })
-        )
+          }),
+        ),
       ),
       selectProject: (projectId: string) => {
         patchState(store, { selectedProjectId: projectId });
@@ -111,21 +111,25 @@ export const ProjectsStore = signalStore(
       loadMembers: rxMethod<string[]>(
         pipe(
           switchMap((ids) => projectsService.getUsers(ids)),
-          tap((members) => patchState(store, { members }))
-        )
+          tap((members) => patchState(store, { members })),
+        ),
       ),
       deleteProject: async (projectId: string) => {
         try {
+          // 1. Delete all issues in the project first
+          await issueService.deleteIssuesByProjectId(projectId);
+          // 2. Then delete the project
           await projectsService.deleteProject(projectId);
+
           // Optimistic update: Remove from list locally
           patchState(store, {
             projects: store.projects().filter((p) => p.id !== projectId),
           });
-          errorService.showSuccess('Project deleted successfully');
+          errorService.showSuccess('Project and all its issues deleted successfully');
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to delete project';
           console.error('Failed to delete project', err);
-          // errorService.showError(errorMessage);
+          errorService.showError(errorMessage);
         }
       },
       acceptInvite: async (project: Project, userId: string) => {
@@ -183,7 +187,7 @@ export const ProjectsStore = signalStore(
               userToInvite.uid,
               project.invitedMemberIds,
               role,
-              project.roles || {}
+              project.roles || {},
             );
             errorService.showSuccess(`Invitation sent to ${email}`);
           }
@@ -200,6 +204,13 @@ export const ProjectsStore = signalStore(
         try {
           const project = store.selectedProject();
           if (project) {
+            // Prevent removing the owner
+            if (memberId === project.ownerId) {
+              errorService.showError('Cannot remove the project owner.');
+              store.setLoading(false);
+              return;
+            }
+
             // Unassign issues from this member in this project
             await issueService.unassignUserFromProjectIssues(project.id, memberId);
 
@@ -223,7 +234,18 @@ export const ProjectsStore = signalStore(
           throw err;
         }
       },
-    })
+      updateProject: async (projectId: string, updates: Partial<Project>) => {
+        try {
+          await projectsService.updateProject(projectId, updates);
+          patchState(store, {
+            projects: store.projects().map((p) => (p.id === projectId ? { ...p, ...updates } : p)),
+          });
+        } catch (err: any) {
+          console.error('Failed to update project', err);
+          errorService.showError('Failed to update project');
+        }
+      },
+    }),
   ),
   withHooks({
     onInit(store) {
@@ -274,5 +296,5 @@ export const ProjectsStore = signalStore(
         }
       });
     },
-  })
+  }),
 );

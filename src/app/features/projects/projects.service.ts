@@ -15,7 +15,7 @@ export class ProjectsService {
     const q = query(this.projectsCollection, where('memberIds', 'array-contains', userId));
     return runInInjectionContext(
       this.injector,
-      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>
+      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>,
     );
   }
 
@@ -58,7 +58,7 @@ export class ProjectsService {
     userId: string,
     currentInvitedIds: string[] = [],
     role: 'admin' | 'member' | 'viewer' = 'member',
-    currentRoles: { [key: string]: string } = {}
+    currentRoles: { [key: string]: string } = {},
   ) {
     const docRef = doc(this.firestore, 'projects', projectId);
     if (currentInvitedIds.includes(userId)) return Promise.resolve();
@@ -80,7 +80,7 @@ export class ProjectsService {
     const q = query(this.projectsCollection, where('invitedMemberIds', 'array-contains', userId));
     return runInInjectionContext(
       this.injector,
-      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>
+      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>,
     );
   }
 
@@ -108,5 +108,10 @@ export class ProjectsService {
     const docRef = doc(this.firestore, 'projects', projectId);
     const newMemberIds = currentMemberIds.filter((id) => id !== memberIdToRemove);
     return updateDoc(docRef, { memberIds: newMemberIds });
+  }
+
+  updateProject(projectId: string, updates: Partial<Project>) {
+    const docRef = doc(this.firestore, 'projects', projectId);
+    return updateDoc(docRef, updates);
   }
 }

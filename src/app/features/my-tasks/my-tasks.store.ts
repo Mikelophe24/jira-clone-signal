@@ -36,8 +36,8 @@ export const MyTasksStore = signalStore(
         tap((issues) => {
           console.log('Issues found:', issues);
           patchState(store, { issues: issues, loading: false });
-        })
-      )
+        }),
+      ),
     ),
   })),
   withHooks({
@@ -48,5 +48,5 @@ export const MyTasksStore = signalStore(
         store.loadMyIssues(user ? user.uid : null);
       });
     },
-  })
+  }),
 );

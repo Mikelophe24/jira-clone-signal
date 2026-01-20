@@ -86,6 +86,8 @@ body {
   background-color: var(--jira-surface);
   color: var(--jira-text);
   font: var(--mat-sys-body-medium);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 /* You can add global styles to this file, and also import other style files */

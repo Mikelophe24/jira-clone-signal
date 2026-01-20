@@ -42,57 +42,75 @@ import { MembersDialog } from '../../projects/members-dialog/members-dialog';
       <div class="header-actions">
         <div class="header-title-group">
           <h2>Backlog</h2>
-          <button mat-stroked-button (click)="openMembersDialog()" class="members-btn">
-            <mat-icon>people</mat-icon> Members
-          </button>
+          <div class="members-actions">
+            <button mat-stroked-button (click)="openMembersDialog()" class="members-btn">
+              <mat-icon>people</mat-icon> Members
+            </button>
+            <div class="avatar-stack" (click)="openMembersDialog()">
+              @for (member of projectsStore.members().slice(0, 5); track member.uid) {
+                <img
+                  [src]="
+                    member.photoURL ||
+                    'https://ui-avatars.com/api/?name=' + member.displayName + '&background=random'
+                  "
+                  class="member-avatar"
+                  [matTooltip]="member.displayName"
+                />
+              }
+              @if (projectsStore.members().length > 5) {
+                <div class="more-badge">+{{ projectsStore.members().length - 5 }}</div>
+              }
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Sprints List -->
-      @for (sprint of sprintStore.sprints(); track sprint.id) {
-      <div class="sprint-container">
-        <div class="sprint-header">
-          <div class="sprint-info">
-            <span class="sprint-name">{{ sprint.name }}</span>
-            <span class="sprint-dates" *ngIf="sprint.startDate">
-              {{ sprint.startDate | date }} - {{ sprint.endDate | date }}
-            </span>
-            <span class="sprint-status badge" [class]="sprint.status">{{ sprint.status }}</span>
+      @for (sprint of visibleSprints(); track sprint.id) {
+        <div class="sprint-container">
+          <div class="sprint-header">
+            <div class="sprint-info">
+              <span class="sprint-name">{{ sprint.name }}</span>
+              <span class="sprint-dates" *ngIf="sprint.startDate">
+                {{ sprint.startDate | date }} - {{ sprint.endDate | date }}
+              </span>
+              <span class="sprint-status badge" [class]="sprint.status">{{ sprint.status }}</span>
+            </div>
+            <div class="sprint-actions">
+              @if (sprint.status === 'future') {
+                <button mat-stroked-button (click)="startSprint(sprint)">Start Sprint</button>
+              }
+              @if (sprint.status === 'active') {
+                <button mat-stroked-button color="primary" disabled>Active</button>
+                <button mat-button (click)="completeSprint(sprint)">Complete Sprint</button>
+              }
+              <button mat-icon-button [matMenuTriggerFor]="sprintMenu">
+                <mat-icon>more_horiz</mat-icon>
+              </button>
+              <mat-menu #sprintMenu="matMenu">
+                <button mat-menu-item (click)="editSprint(sprint)">Edit sprint</button>
+                <button mat-menu-item (click)="deleteSprint(sprint)">Delete sprint</button>
+              </mat-menu>
+            </div>
           </div>
-          <div class="sprint-actions">
-            @if (sprint.status === 'future') {
-            <button mat-stroked-button (click)="startSprint(sprint)">Start Sprint</button>
-            } @if (sprint.status === 'active') {
-            <button mat-stroked-button color="primary" disabled>Active</button>
-            <button mat-button (click)="completeSprint(sprint)">Complete Sprint</button>
-            }
-            <button mat-icon-button [matMenuTriggerFor]="sprintMenu">
-              <mat-icon>more_horiz</mat-icon>
-            </button>
-            <mat-menu #sprintMenu="matMenu">
-              <button mat-menu-item (click)="editSprint(sprint)">Edit sprint</button>
-              <button mat-menu-item (click)="deleteSprint(sprint)">Delete sprint</button>
-            </mat-menu>
-          </div>
-        </div>
 
-        <div
-          class="issues-list sprint-issues"
-          cdkDropList
-          [cdkDropListData]="getSprintIssues(sprint.id)"
-          (cdkDropListDropped)="drop($event, sprint.id)"
-        >
-          @for (issue of getSprintIssues(sprint.id); track issue.id) {
-          <div class="backlog-issue-item" cdkDrag [cdkDragData]="issue">
-            <ng-container
-              *ngTemplateOutlet="issueTemplate; context: { $implicit: issue }"
-            ></ng-container>
+          <div
+            class="issues-list sprint-issues"
+            cdkDropList
+            [cdkDropListData]="getSprintIssues(sprint.id)"
+            (cdkDropListDropped)="drop($event, sprint.id)"
+          >
+            @for (issue of getSprintIssues(sprint.id); track issue.id) {
+              <div class="backlog-issue-item" cdkDrag [cdkDragData]="issue">
+                <ng-container
+                  *ngTemplateOutlet="issueTemplate; context: { $implicit: issue }"
+                ></ng-container>
+              </div>
+            } @empty {
+              <div class="empty-sprint-dropzone">Plan a sprint by dragging issues here</div>
+            }
           </div>
-          } @empty {
-          <div class="empty-sprint-dropzone">Plan a sprint by dragging issues here</div>
-          }
         </div>
-      </div>
       }
 
       <!-- Backlog Section -->
@@ -112,13 +130,13 @@ import { MembersDialog } from '../../projects/members-dialog/members-dialog';
           (cdkDropListDropped)="drop($event, null)"
         >
           @for (issue of backlogIssues(); track issue.id) {
-          <div class="backlog-issue-item" cdkDrag [cdkDragData]="issue">
-            <ng-container
-              *ngTemplateOutlet="issueTemplate; context: { $implicit: issue }"
-            ></ng-container>
-          </div>
+            <div class="backlog-issue-item" cdkDrag [cdkDragData]="issue">
+              <ng-container
+                *ngTemplateOutlet="issueTemplate; context: { $implicit: issue }"
+              ></ng-container>
+            </div>
           } @empty {
-          <div class="empty-state">No issues in the backlog.</div>
+            <div class="empty-state">No issues in the backlog.</div>
           }
         </div>
       </div>
@@ -138,16 +156,18 @@ import { MembersDialog } from '../../projects/members-dialog/members-dialog';
             <div class="status-badge">{{ issue.statusColumnId }}</div>
             <div class="assignee">
               @if (getAssignee(issue.assigneeId); as assignee) {
-              <img
-                [src]="
-                  assignee.photoURL ||
-                  'https://ui-avatars.com/api/?name=' + assignee.displayName + '&background=random'
-                "
-                class="assignee-avatar"
-                [matTooltip]="assignee.displayName"
-              />
+                <img
+                  [src]="
+                    assignee.photoURL ||
+                    'https://ui-avatars.com/api/?name=' +
+                      assignee.displayName +
+                      '&background=random'
+                  "
+                  class="assignee-avatar"
+                  [matTooltip]="assignee.displayName"
+                />
               } @else {
-              <span class="unassigned-text">Unassigned</span>
+                <span class="unassigned-text">Unassigned</span>
               }
             </div>
             <!-- Menu kÄ¨ thua -->
@@ -185,6 +205,48 @@ import { MembersDialog } from '../../projects/members-dialog/members-dialog';
         display: flex;
         align-items: center;
         gap: 16px;
+      }
+      .members-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .avatar-stack {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        padding-left: 2px; /* Offset for first negative margin if needed, or just normal */
+      }
+      .member-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        object-fit: cover;
+        margin-left: -6px; /* Overlap effect */
+        transition: transform 0.2s;
+        &:hover {
+          transform: translateY(-2px);
+          z-index: 1;
+        }
+        &:first-child {
+          margin-left: 0;
+        }
+      }
+      .more-badge {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #dfe1e6;
+        color: #172b4d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 500;
+        border: 2px solid #fff;
+        margin-left: -6px;
+        z-index: 0;
       }
       .members-btn {
         height: 32px;
@@ -338,6 +400,13 @@ import { MembersDialog } from '../../projects/members-dialog/members-dialog';
         background: var(--jira-border);
         border-radius: 3px;
       }
+      .sprint-actions button,
+      .backlog-actions button {
+        height: 32px;
+        line-height: 32px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
     `,
   ],
 })
@@ -370,6 +439,11 @@ export class Backlog {
     return map;
   });
 
+  // Filter out completed sprints from the view
+  visibleSprints = computed(() => {
+    return this.sprintStore.sprints().filter((s) => s.status !== 'completed');
+  });
+
   ngOnInit() {
     this.route.parent?.paramMap.subscribe((params) => {
       const projectId = params.get('projectId');
@@ -390,7 +464,7 @@ export class Backlog {
         event.previousContainer.data,
         event.container.data,
         event.previousIndex,
-        event.currentIndex
+        event.currentIndex,
       );
 
       const issue = event.item.data as Issue;
@@ -524,7 +598,7 @@ export class Backlog {
   deleteSprint(sprint: any) {
     if (
       confirm(
-        `Are you sure you want to delete sprint ${sprint.name}? Issues will be moved to the backlog.`
+        `Are you sure you want to delete sprint ${sprint.name}? Issues will be moved to the backlog.`,
       )
     ) {
       // 1. Move issues to backlog

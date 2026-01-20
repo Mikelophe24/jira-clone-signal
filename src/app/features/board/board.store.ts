@@ -67,8 +67,8 @@ export const BoardStore = signalStore(
         const matchesStatus = status.length === 0 || status.includes(issue.statusColumnId);
         const matchesPriority = priority.length === 0 || priority.includes(issue.priority);
 
-        const activeSprintId = sprintStore.activeSprint()?.id;
-        const matchesSprint = issue.sprintId ? issue.sprintId === activeSprintId : true;
+        const activeSprintIds = sprintStore.activeSprints().map((s) => s.id);
+        const matchesSprint = issue.sprintId ? activeSprintIds.includes(issue.sprintId) : true;
 
         const isNotBacklog = !issue.isInBacklog;
 
@@ -90,7 +90,7 @@ export const BoardStore = signalStore(
     return {
       todoIssues: computed(() => sortedFilteredIssues().filter((i) => i.statusColumnId === 'todo')),
       inProgressIssues: computed(() =>
-        sortedFilteredIssues().filter((i) => i.statusColumnId === 'in-progress')
+        sortedFilteredIssues().filter((i) => i.statusColumnId === 'in-progress'),
       ),
       doneIssues: computed(() => sortedFilteredIssues().filter((i) => i.statusColumnId === 'done')),
     };
@@ -99,7 +99,7 @@ export const BoardStore = signalStore(
     (
       store,
       issueService: IssueService = inject(IssueService),
-      errorService: ErrorNotificationService = inject(ErrorNotificationService)
+      errorService: ErrorNotificationService = inject(ErrorNotificationService),
     ) => ({
       updateFilter: (newFilter: Partial<BoardFilter>) => {
         patchState(store, (state) => ({
@@ -149,10 +149,10 @@ export const BoardStore = signalStore(
                 const errorMessage = error?.message || 'Failed to load issues';
                 errorService.showError(errorMessage);
                 return of([]);
-              })
+              }),
             );
-          })
-        )
+          }),
+        ),
       ),
       moveIssue: (event: CdkDragDrop<Issue[]>, newStatus: string) => {
         const movedIssue = event.item.data as Issue;
@@ -183,7 +183,7 @@ export const BoardStore = signalStore(
                     issue.order = update.data.order!;
                   }
                 });
-              })
+              }),
             );
 
             // 4. Cập nhật hàng loạt (Batch Update) lên Firestore
@@ -216,7 +216,7 @@ export const BoardStore = signalStore(
                 issue.statusColumnId = newStatus;
                 issue.order = newOrder;
               }
-            })
+            }),
           );
 
           // Cập nhật lên Firestore
@@ -252,7 +252,7 @@ export const BoardStore = signalStore(
 
         patchState(store, (state) => ({
           issues: state.issues.map((issue) =>
-            issue.id === issueId ? { ...issue, ...updates } : issue
+            issue.id === issueId ? { ...issue, ...updates } : issue,
           ),
         }));
 
@@ -266,7 +266,7 @@ export const BoardStore = signalStore(
           patchState(store, { issues: originalIssues });
         }
       },
-    })
+    }),
   ),
 
   withHooks({
@@ -278,5 +278,5 @@ export const BoardStore = signalStore(
         }
       });
     },
-  })
+  }),
 );

@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatButtonModule } from '@angular/material/button';
+import { MatSelectModule } from '@angular/material/select';
 import { MatNativeDateModule } from '@angular/material/core';
 import { CommonModule } from '@angular/common';
 import { Sprint } from '../../sprint.model';
@@ -20,6 +21,7 @@ import { Sprint } from '../../sprint.model';
     MatInputModule,
     MatDatepickerModule,
     MatButtonModule,
+    MatSelectModule,
     MatNativeDateModule,
   ],
   template: `
@@ -35,8 +37,24 @@ import { Sprint } from '../../sprint.model';
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Duration</mat-label>
+          <mat-select formControlName="duration" (selectionChange)="onDurationChange()">
+            <mat-option value="1">1 week</mat-option>
+            <mat-option value="2">2 weeks</mat-option>
+            <mat-option value="3">3 weeks</mat-option>
+            <mat-option value="4">4 weeks</mat-option>
+            <mat-option value="custom">Custom</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
           <mat-label>Start Date</mat-label>
-          <input matInput [matDatepicker]="startPicker" formControlName="startDate" />
+          <input
+            matInput
+            [matDatepicker]="startPicker"
+            formControlName="startDate"
+            (dateChange)="onStartDateChange()"
+          />
           <mat-datepicker-toggle matIconSuffix [for]="startPicker"></mat-datepicker-toggle>
           <mat-datepicker #startPicker></mat-datepicker>
         </mat-form-field>
@@ -84,19 +102,48 @@ export class EditSprintDialog {
 
   constructor(
     private dialogRef: MatDialogRef<EditSprintDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: { sprint: Sprint }
+    @Inject(MAT_DIALOG_DATA) public data: { sprint: Sprint },
   ) {
     this.form = this.fb.group({
       name: [data.sprint.name, Validators.required],
+      duration: ['custom'], // Default to custom for edit mode usually
       startDate: [data.sprint.startDate ? new Date(data.sprint.startDate) : null],
       endDate: [data.sprint.endDate ? new Date(data.sprint.endDate) : null],
       goal: [data.sprint.goal || ''],
     });
   }
 
+  onDurationChange() {
+    const duration = this.form.get('duration')?.value;
+    const endDateControl = this.form.get('endDate');
+
+    if (duration === 'custom') {
+      endDateControl?.enable();
+      return;
+    }
+
+    endDateControl?.disable();
+    const weeks = parseInt(duration, 10);
+    const startDate = this.form.get('startDate')?.value;
+
+    if (startDate) {
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + weeks * 7);
+      this.form.patchValue({ endDate });
+    }
+  }
+
+  onStartDateChange() {
+    // Only recalculate if not custom
+    const duration = this.form.get('duration')?.value;
+    if (duration !== 'custom') {
+      this.onDurationChange();
+    }
+  }
+
   save() {
     if (this.form.valid) {
-      const formValue = this.form.value;
+      const formValue = this.form.getRawValue();
       const updates = {
         name: formValue.name,
         startDate: formValue.startDate ? formValue.startDate.toISOString() : null,
