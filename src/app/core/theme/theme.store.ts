@@ -6,7 +6,7 @@ type ThemeState = {
 };
 
 const initialState: ThemeState = {
-  isDark: true, // Default to Dark as requested by the user context (Jira Clone usually implies dark mode preference for devs)
+  isDark: false, // Default to Light mode
 };
 
 export const ThemeStore = signalStore(
@@ -42,5 +42,5 @@ export const ThemeStore = signalStore(
         }
       });
     },
-  })
+  }),
 );
