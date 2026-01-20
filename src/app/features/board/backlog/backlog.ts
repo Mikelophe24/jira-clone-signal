@@ -140,7 +140,6 @@ import { MembersDialog } from '../../projects/members-dialog/members-dialog';
           }
         </div>
       </div>
-
       <!-- Issue Item Template -->
       <ng-template #issueTemplate let-issue>
         <div class="backlog-item">
@@ -153,7 +152,9 @@ import { MembersDialog } from '../../projects/members-dialog/members-dialog';
           </div>
 
           <div class="item-right">
-            <div class="status-badge">{{ issue.statusColumnId }}</div>
+            <div class="status-badge" [class]="issue.statusColumnId">
+              {{ issue.statusColumnId.replace('-', ' ') }}
+            </div>
             <div class="assignee">
               @if (getAssignee(issue.assigneeId); as assignee) {
                 <img
@@ -399,6 +400,23 @@ import { MembersDialog } from '../../projects/members-dialog/members-dialog';
         padding: 2px 6px;
         background: var(--jira-border);
         border-radius: 3px;
+        font-weight: 600;
+        color: #42526e;
+      }
+
+      .status-badge.todo {
+        background-color: #dfe1e6;
+        color: #42526e;
+      }
+
+      .status-badge.in-progress {
+        background-color: #deebff;
+        color: #0747a6;
+      }
+
+      .status-badge.done {
+        background-color: #e3fcef;
+        color: #006644;
       }
       .sprint-actions button,
       .backlog-actions button {

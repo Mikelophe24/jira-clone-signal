@@ -26,6 +26,7 @@ import { DatePipe } from '@angular/common';
 export interface IssueDialogData {
   statusColumnId: string;
   issue?: Issue;
+  sprintId?: string;
 }
 
 @Component({
@@ -101,6 +102,15 @@ export interface IssueDialogData {
               <mat-option value="task">Task</mat-option>
               <mat-option value="bug">Bug</mat-option>
               <mat-option value="story">Story</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status</mat-label>
+            <mat-select formControlName="statusColumnId">
+              <mat-option value="todo">To Do</mat-option>
+              <mat-option value="in-progress">In Progress</mat-option>
+              <mat-option value="done">Done</mat-option>
             </mat-select>
           </mat-form-field>
 
@@ -546,6 +556,7 @@ export class IssueDialog {
       // Set default status if creating new
       this.form.patchValue({
         statusColumnId: data.statusColumnId || 'todo',
+        sprintId: data.sprintId || 'backlog',
       });
     }
   }

@@ -112,14 +112,6 @@ import { CommonModule, DatePipe } from '@angular/common';
               >
                 <button
                   mat-icon-button
-                  class="backlog-btn"
-                  (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
-                  matTooltip="Move to Backlog"
-                >
-                  <mat-icon>archive</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
                   class="delete-btn"
                   color="warn"
                   (click)="$event.stopPropagation(); deleteIssue(issue.id)"
@@ -206,14 +198,6 @@ import { CommonModule, DatePipe } from '@angular/common';
                 [cdkDragData]="issue"
                 (click)="openIssueDialog('in-progress', issue)"
               >
-                <button
-                  mat-icon-button
-                  class="backlog-btn"
-                  (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
-                  matTooltip="Move to Backlog"
-                >
-                  <mat-icon>archive</mat-icon>
-                </button>
                 <button
                   mat-icon-button
                   class="delete-btn"
@@ -304,14 +288,6 @@ import { CommonModule, DatePipe } from '@angular/common';
               >
                 <button
                   mat-icon-button
-                  class="backlog-btn"
-                  (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
-                  matTooltip="Move to Backlog"
-                >
-                  <mat-icon>archive</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
                   class="delete-btn"
                   color="warn"
                   (click)="$event.stopPropagation(); deleteIssue(issue.id)"
@@ -385,361 +361,7 @@ import { CommonModule, DatePipe } from '@angular/common';
       </ng-template>
     </div>
   `,
-  styles: [
-    `
-      .board-container {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        padding: 16px;
-        background-color: var(--jira-surface);
-      }
-      .board-header {
-        margin-bottom: 24px;
-
-        .header-content {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          width: 100%;
-        }
-
-        h2 {
-          margin: 0;
-          font-size: 24px;
-          color: var(--jira-text);
-        }
-
-        .filters {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          flex-wrap: wrap;
-        }
-
-        .search-input {
-          width: 200px;
-
-          mat-icon {
-            font-size: 20px;
-            color: var(--jira-text-secondary);
-            margin-right: 8px;
-          }
-
-          input {
-            font-size: 14px;
-            color: var(--jira-text);
-          }
-        }
-
-        .quick-filters {
-          display: flex;
-          gap: 12px;
-
-          button.active {
-            background-color: var(--jira-active-link-bg);
-            color: var(--jira-active-link-text);
-            border-color: transparent;
-          }
-        }
-      }
-      .board-columns {
-        display: flex;
-        gap: 24px;
-        height: 100%;
-        overflow-x: auto;
-        padding-bottom: 12px;
-      }
-      .column {
-        flex: 1;
-        min-width: 280px;
-        max-width: 350px;
-        background: var(--jira-sidebar-bg); /* Use sidebar-bg as column bg */
-        border-radius: 6px;
-        display: flex;
-        flex-direction: column;
-        padding: 8px;
-        max-height: 100%;
-        overflow: hidden; /* Ensure column itself doesn't scroll */
-        border: 1px solid var(--jira-border);
-      }
-      .column-header {
-        padding: 12px 8px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        h3 {
-          margin: 0;
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--jira-text-secondary);
-          text-transform: uppercase;
-        }
-        .header-end {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .issue-count {
-          background: rgba(127, 127, 127, 0.2); /* Semi-transparent for both modes */
-          border-radius: 10px;
-          border: 1px solid var(--jira-border);
-          padding: 2px 8px;
-          font-size: 11px;
-          color: var(--jira-text);
-        }
-      }
-      .column-footer {
-        padding: 8px;
-        /* create button styling */
-        .create-btn {
-          width: 100%;
-          text-align: left;
-          justify-content: flex-start;
-          color: var(--jira-text-secondary);
-          &:hover {
-            background-color: var(--jira-surface-raised);
-            color: var(--jira-text);
-          }
-          mat-icon {
-            margin-right: 8px;
-            font-size: 18px;
-            width: 18px;
-            height: 18px;
-          }
-        }
-
-        .inline-create-form {
-          padding: 4px;
-        }
-
-        .inline-input {
-          width: 100%;
-          padding: 8px;
-          border-radius: 3px;
-          border: 2px solid #0052cc;
-          outline: none;
-          font-family: inherit;
-          font-size: 14px;
-        }
-      }
-      .issue-list {
-        flex: 1;
-        min-height: 100px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        padding: 4px;
-        overflow-y: auto;
-        overflow-x: hidden;
-      }
-      .issue-card {
-        position: relative;
-        cursor: move;
-        background: var(--jira-surface-raised);
-        border-radius: 3px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        transition:
-          background 0.1s,
-          box-shadow 0.1s;
-        margin-bottom: 4px;
-        border: 1px solid transparent; /* Prepare for border transition */
-
-        &:hover {
-          background-color: var(--jira-surface-sunken);
-          border-color: var(--jira-border);
-        }
-      }
-
-      /* Reduce padding in mat-card-content to make it compact */
-      .issue-card mat-card-content {
-        padding: 10px 12px !important;
-      }
-
-      .issue-title {
-        font-size: 14px;
-        color: var(--jira-text);
-        margin-bottom: 12px;
-        line-height: 1.4;
-        font-weight: 500;
-        word-wrap: break-word;
-      }
-
-      .issue-meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 24px;
-      }
-
-      .key {
-        font-size: 12px;
-        color: var(--jira-text-secondary);
-        font-weight: 600;
-      }
-
-      .issue-card .backlog-btn {
-        position: absolute;
-        top: 2px;
-        right: 28px; /* Position to the left of delete button */
-        width: 24px;
-        height: 24px;
-        line-height: 24px;
-        min-height: 24px;
-        padding: 0;
-
-        opacity: 0; /* Hidden by default */
-        transition: opacity 0.2s ease-in-out;
-
-        /* Make icon smaller and centered */
-        mat-icon {
-          font-size: 16px;
-          width: 16px;
-          height: 16px;
-          line-height: 16px;
-          color: var(--jira-text-secondary); /* Subtle gray */
-        }
-
-        &:hover mat-icon {
-          color: #0052cc; /* Blue on hover */
-        }
-      }
-
-      .issue-card .delete-btn {
-        position: absolute;
-        top: 2px;
-        right: 2px;
-        width: 24px;
-        height: 24px;
-        line-height: 24px;
-        min-height: 24px;
-        padding: 0;
-
-        opacity: 0; /* Hidden by default */
-        transition: opacity 0.2s ease-in-out;
-
-        /* Make icon smaller and centered */
-        mat-icon {
-          font-size: 16px;
-          width: 16px;
-          height: 16px;
-          line-height: 16px;
-          color: var(--jira-text-secondary); /* Subtle gray */
-        }
-
-        &:hover mat-icon {
-          color: #de350b; /* Red on hover */
-        }
-      }
-
-      .issue-card:hover .backlog-btn,
-      .issue-card:hover .delete-btn {
-        opacity: 1; /* Show on card hover */
-      }
-
-      .cdk-drag-preview {
-        box-sizing: border-box;
-        border-radius: 4px;
-        box-shadow:
-          0 5px 5px -3px rgba(0, 0, 0, 0.2),
-          0 8px 10px 1px rgba(0, 0, 0, 0.14),
-          0 3px 14px 2px rgba(0, 0, 0, 0.12);
-        background-color: var(--jira-surface-raised);
-        color: var(--jira-text);
-        z-index: 1000;
-        overflow: hidden !important; /* Fix scrollbars during drag */
-      }
-      .cdk-drag-placeholder {
-        opacity: 0.5;
-        background: var(--jira-sidebar-bg);
-        border: 1px dashed var(--jira-text-secondary);
-        min-height: 80px;
-      }
-      .cdk-drag-animating {
-        transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
-      }
-      .issue-list.cdk-drop-list-dragging .issue-card:not(.cdk-drag-placeholder) {
-        transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
-      }
-
-      .assignee-avatar {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        object-fit: cover;
-        /* Add a slight border/shadow to pop out */
-        box-shadow: 0 0 0 2px var(--jira-surface-raised);
-      }
-
-      .meta-left {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .priority-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .due-date {
-        margin-left: 8px;
-        font-size: 11px;
-        color: var(--jira-text-secondary);
-        display: flex;
-        align-items: center;
-        background: var(--jira-surface-sunken);
-        padding: 2px 4px;
-        border-radius: 3px;
-      }
-
-      .due-date.overdue {
-        color: #de350b;
-        background: #ffebe6;
-        font-weight: 600;
-      }
-
-      .subtasks-count {
-        margin-left: 8px;
-        font-size: 11px;
-        color: var(--jira-text-secondary);
-        display: flex;
-        align-items: center;
-        background: var(--jira-surface-sunken);
-        padding: 2px 4px;
-        border-radius: 3px;
-      }
-      .empty-state {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100%;
-        text-align: center;
-        padding-top: 40px;
-
-        .empty-state-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-
-        h3 {
-          margin-bottom: 8px;
-          color: var(--jira-text);
-          font-weight: 500;
-        }
-
-        p {
-          color: var(--jira-text-secondary);
-          margin-bottom: 24px;
-        }
-      }
-    `,
-  ],
+  styleUrl: './board.scss',
 })
 export class Board implements OnInit {
   readonly store = inject(BoardStore);
@@ -789,9 +411,14 @@ export class Board implements OnInit {
   }
 
   openIssueDialog(statusColumnId: string, issue?: Issue) {
+    const activeSprint = this.sprintStore.activeSprint();
     const dialogRef = this.dialog.open(IssueDialog, {
       width: '500px',
-      data: { statusColumnId, issue },
+      data: {
+        statusColumnId,
+        issue,
+        sprintId: activeSprint?.id, // Pass active sprint ID
+      },
     });
 
     dialogRef.afterClosed().subscribe((result) => {
@@ -806,6 +433,10 @@ export class Board implements OnInit {
 
           if (projectId && projectKey) {
             const activeSprint = this.sprintStore.activeSprint();
+            const selectedSprintId = result.sprintId;
+
+            const isAssignedToActiveSprint = activeSprint && selectedSprintId === activeSprint.id;
+
             this.store.addIssue({
               ...result,
               projectId,
@@ -813,9 +444,10 @@ export class Board implements OnInit {
               order: 0,
               key: this.store.getNextIssueKey(projectKey),
               reporterId: this.authStore.user()?.uid,
-              // Fix: Assign to active sprint and remove from backlog so it appears on board
-              sprintId: activeSprint?.id || null,
-              isInBacklog: false,
+              // Use the sprintId from the dialog result (which defaults to active sprint if not changed)
+              sprintId: selectedSprintId || null,
+              // Only show on board if assigned to the active sprint
+              isInBacklog: !isAssignedToActiveSprint,
             });
           }
         }
@@ -827,10 +459,6 @@ export class Board implements OnInit {
     if (confirm('Are you sure you want to delete this issue?')) {
       this.store.deleteIssue(issueId);
     }
-  }
-
-  moveToBacklog(issueId: string) {
-    this.issueService.moveToBacklog(issueId);
   }
 
   getAssignee(assigneeId: string | undefined) {
