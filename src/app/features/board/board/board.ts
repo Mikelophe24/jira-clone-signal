@@ -71,7 +71,7 @@ import { CommonModule, DatePipe } from '@angular/common';
         </div>
 
         @if (store.loading()) {
-        <mat-spinner diameter="30"></mat-spinner>
+          <mat-spinner diameter="30"></mat-spinner>
         }
       </div>
 
@@ -94,73 +94,74 @@ import { CommonModule, DatePipe } from '@angular/common';
             (cdkDropListDropped)="drop($event, 'todo')"
           >
             @for (issue of store.todoIssues(); track issue.id) {
-            <mat-card
-              class="issue-card"
-              cdkDrag
-              [cdkDragData]="issue"
-              (click)="openIssueDialog('todo', issue)"
-            >
-              <button
-                mat-icon-button
-                class="backlog-btn"
-                (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
-                matTooltip="Move to Backlog"
+              <mat-card
+                class="issue-card"
+                cdkDrag
+                [cdkDragData]="issue"
+                (click)="openIssueDialog('todo', issue)"
               >
-                <mat-icon>archive</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                class="delete-btn"
-                color="warn"
-                (click)="$event.stopPropagation(); deleteIssue(issue.id)"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-              <mat-card-content>
-                <div class="issue-title">{{ issue.title }}</div>
-                <div class="issue-meta">
-                  <div class="meta-left">
-                    <mat-icon
-                      [style.color]="getPriorityColor(issue.priority)"
-                      class="priority-icon"
-                      [matTooltip]="issue.priority"
-                    >
-                      {{ getPriorityIcon(issue.priority) }}
-                    </mat-icon>
-                    <span class="key">{{ issue.key }}</span>
-                    @if (issue.dueDate) {
-                    <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                <button
+                  mat-icon-button
+                  class="backlog-btn"
+                  (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
+                  matTooltip="Move to Backlog"
+                >
+                  <mat-icon>archive</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  class="delete-btn"
+                  color="warn"
+                  (click)="$event.stopPropagation(); deleteIssue(issue.id)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+                <mat-card-content>
+                  <div class="issue-title">{{ issue.title }}</div>
+                  <div class="issue-meta">
+                    <div class="meta-left">
                       <mat-icon
-                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
-                        >calendar_today</mat-icon
+                        [style.color]="getPriorityColor(issue.priority)"
+                        class="priority-icon"
+                        [matTooltip]="issue.priority"
                       >
-                      {{ issue.dueDate | date : 'd MMM' }}
-                    </span>
-                    } @if (getSubtaskStats(issue); as stats) {
-                    <span class="subtasks-count" title="Subtasks">
-                      <mat-icon
-                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
-                        >check_box</mat-icon
-                      >
-                      {{ stats.completed }}/{{ stats.total }}
-                    </span>
+                        {{ getPriorityIcon(issue.priority) }}
+                      </mat-icon>
+                      <span class="key">{{ issue.key }}</span>
+                      @if (issue.dueDate) {
+                        <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                          <mat-icon
+                            style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                            >calendar_today</mat-icon
+                          >
+                          {{ issue.dueDate | date: 'd MMM' }}
+                        </span>
+                      }
+                      @if (getSubtaskStats(issue); as stats) {
+                        <span class="subtasks-count" title="Subtasks">
+                          <mat-icon
+                            style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                            >check_box</mat-icon
+                          >
+                          {{ stats.completed }}/{{ stats.total }}
+                        </span>
+                      }
+                    </div>
+                    @if (getAssignee(issue.assigneeId); as assignee) {
+                      <img
+                        [src]="
+                          assignee.photoURL ||
+                          'https://ui-avatars.com/api/?name=' +
+                            assignee.displayName +
+                            '&background=random'
+                        "
+                        class="assignee-avatar"
+                        [title]="assignee.displayName"
+                      />
                     }
                   </div>
-                  @if (getAssignee(issue.assigneeId); as assignee) {
-                  <img
-                    [src]="
-                      assignee.photoURL ||
-                      'https://ui-avatars.com/api/?name=' +
-                        assignee.displayName +
-                        '&background=random'
-                    "
-                    class="assignee-avatar"
-                    [title]="assignee.displayName"
-                  />
-                  }
-                </div>
-              </mat-card-content>
-            </mat-card>
+                </mat-card-content>
+              </mat-card>
             }
           </div>
         </div>
@@ -183,73 +184,74 @@ import { CommonModule, DatePipe } from '@angular/common';
             (cdkDropListDropped)="drop($event, 'in-progress')"
           >
             @for (issue of store.inProgressIssues(); track issue.id) {
-            <mat-card
-              class="issue-card"
-              cdkDrag
-              [cdkDragData]="issue"
-              (click)="openIssueDialog('in-progress', issue)"
-            >
-              <button
-                mat-icon-button
-                class="backlog-btn"
-                (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
-                matTooltip="Move to Backlog"
+              <mat-card
+                class="issue-card"
+                cdkDrag
+                [cdkDragData]="issue"
+                (click)="openIssueDialog('in-progress', issue)"
               >
-                <mat-icon>archive</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                class="delete-btn"
-                color="warn"
-                (click)="$event.stopPropagation(); deleteIssue(issue.id)"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-              <mat-card-content>
-                <div class="issue-title">{{ issue.title }}</div>
-                <div class="issue-meta">
-                  <div class="meta-left">
-                    <mat-icon
-                      [style.color]="getPriorityColor(issue.priority)"
-                      class="priority-icon"
-                      [matTooltip]="issue.priority"
-                    >
-                      {{ getPriorityIcon(issue.priority) }}
-                    </mat-icon>
-                    <span class="key">{{ issue.key }}</span>
-                    @if (issue.dueDate) {
-                    <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                <button
+                  mat-icon-button
+                  class="backlog-btn"
+                  (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
+                  matTooltip="Move to Backlog"
+                >
+                  <mat-icon>archive</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  class="delete-btn"
+                  color="warn"
+                  (click)="$event.stopPropagation(); deleteIssue(issue.id)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+                <mat-card-content>
+                  <div class="issue-title">{{ issue.title }}</div>
+                  <div class="issue-meta">
+                    <div class="meta-left">
                       <mat-icon
-                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
-                        >calendar_today</mat-icon
+                        [style.color]="getPriorityColor(issue.priority)"
+                        class="priority-icon"
+                        [matTooltip]="issue.priority"
                       >
-                      {{ issue.dueDate | date : 'd MMM' }}
-                    </span>
-                    } @if (getSubtaskStats(issue); as stats) {
-                    <span class="subtasks-count" title="Subtasks">
-                      <mat-icon
-                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
-                        >check_box</mat-icon
-                      >
-                      {{ stats.completed }}/{{ stats.total }}
-                    </span>
+                        {{ getPriorityIcon(issue.priority) }}
+                      </mat-icon>
+                      <span class="key">{{ issue.key }}</span>
+                      @if (issue.dueDate) {
+                        <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                          <mat-icon
+                            style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                            >calendar_today</mat-icon
+                          >
+                          {{ issue.dueDate | date: 'd MMM' }}
+                        </span>
+                      }
+                      @if (getSubtaskStats(issue); as stats) {
+                        <span class="subtasks-count" title="Subtasks">
+                          <mat-icon
+                            style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                            >check_box</mat-icon
+                          >
+                          {{ stats.completed }}/{{ stats.total }}
+                        </span>
+                      }
+                    </div>
+                    @if (getAssignee(issue.assigneeId); as assignee) {
+                      <img
+                        [src]="
+                          assignee.photoURL ||
+                          'https://ui-avatars.com/api/?name=' +
+                            assignee.displayName +
+                            '&background=random'
+                        "
+                        class="assignee-avatar"
+                        [title]="assignee.displayName"
+                      />
                     }
                   </div>
-                  @if (getAssignee(issue.assigneeId); as assignee) {
-                  <img
-                    [src]="
-                      assignee.photoURL ||
-                      'https://ui-avatars.com/api/?name=' +
-                        assignee.displayName +
-                        '&background=random'
-                    "
-                    class="assignee-avatar"
-                    [title]="assignee.displayName"
-                  />
-                  }
-                </div>
-              </mat-card-content>
-            </mat-card>
+                </mat-card-content>
+              </mat-card>
             }
           </div>
         </div>
@@ -272,73 +274,74 @@ import { CommonModule, DatePipe } from '@angular/common';
             (cdkDropListDropped)="drop($event, 'done')"
           >
             @for (issue of store.doneIssues(); track issue.id) {
-            <mat-card
-              class="issue-card"
-              cdkDrag
-              [cdkDragData]="issue"
-              (click)="openIssueDialog('done', issue)"
-            >
-              <button
-                mat-icon-button
-                class="backlog-btn"
-                (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
-                matTooltip="Move to Backlog"
+              <mat-card
+                class="issue-card"
+                cdkDrag
+                [cdkDragData]="issue"
+                (click)="openIssueDialog('done', issue)"
               >
-                <mat-icon>archive</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                class="delete-btn"
-                color="warn"
-                (click)="$event.stopPropagation(); deleteIssue(issue.id)"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-              <mat-card-content>
-                <div class="issue-title">{{ issue.title }}</div>
-                <div class="issue-meta">
-                  <div class="meta-left">
-                    <mat-icon
-                      [style.color]="getPriorityColor(issue.priority)"
-                      class="priority-icon"
-                      [matTooltip]="issue.priority"
-                    >
-                      {{ getPriorityIcon(issue.priority) }}
-                    </mat-icon>
-                    <span class="key">{{ issue.key }}</span>
-                    @if (issue.dueDate) {
-                    <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                <button
+                  mat-icon-button
+                  class="backlog-btn"
+                  (click)="$event.stopPropagation(); moveToBacklog(issue.id)"
+                  matTooltip="Move to Backlog"
+                >
+                  <mat-icon>archive</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  class="delete-btn"
+                  color="warn"
+                  (click)="$event.stopPropagation(); deleteIssue(issue.id)"
+                >
+                  <mat-icon>delete</mat-icon>
+                </button>
+                <mat-card-content>
+                  <div class="issue-title">{{ issue.title }}</div>
+                  <div class="issue-meta">
+                    <div class="meta-left">
                       <mat-icon
-                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
-                        >calendar_today</mat-icon
+                        [style.color]="getPriorityColor(issue.priority)"
+                        class="priority-icon"
+                        [matTooltip]="issue.priority"
                       >
-                      {{ issue.dueDate | date : 'd MMM' }}
-                    </span>
-                    } @if (getSubtaskStats(issue); as stats) {
-                    <span class="subtasks-count" title="Subtasks">
-                      <mat-icon
-                        style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
-                        >check_box</mat-icon
-                      >
-                      {{ stats.completed }}/{{ stats.total }}
-                    </span>
+                        {{ getPriorityIcon(issue.priority) }}
+                      </mat-icon>
+                      <span class="key">{{ issue.key }}</span>
+                      @if (issue.dueDate) {
+                        <span class="due-date" [class.overdue]="isOverdue(issue.dueDate)">
+                          <mat-icon
+                            style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                            >calendar_today</mat-icon
+                          >
+                          {{ issue.dueDate | date: 'd MMM' }}
+                        </span>
+                      }
+                      @if (getSubtaskStats(issue); as stats) {
+                        <span class="subtasks-count" title="Subtasks">
+                          <mat-icon
+                            style="font-size: 12px; width: 12px; height: 12px; margin-right: 2px; vertical-align: middle;"
+                            >check_box</mat-icon
+                          >
+                          {{ stats.completed }}/{{ stats.total }}
+                        </span>
+                      }
+                    </div>
+                    @if (getAssignee(issue.assigneeId); as assignee) {
+                      <img
+                        [src]="
+                          assignee.photoURL ||
+                          'https://ui-avatars.com/api/?name=' +
+                            assignee.displayName +
+                            '&background=random'
+                        "
+                        class="assignee-avatar"
+                        [title]="assignee.displayName"
+                      />
                     }
                   </div>
-                  @if (getAssignee(issue.assigneeId); as assignee) {
-                  <img
-                    [src]="
-                      assignee.photoURL ||
-                      'https://ui-avatars.com/api/?name=' +
-                        assignee.displayName +
-                        '&background=random'
-                    "
-                    class="assignee-avatar"
-                    [title]="assignee.displayName"
-                  />
-                  }
-                </div>
-              </mat-card-content>
-            </mat-card>
+                </mat-card-content>
+              </mat-card>
             }
           </div>
         </div>
@@ -465,7 +468,9 @@ import { CommonModule, DatePipe } from '@angular/common';
         background: var(--jira-surface-raised);
         border-radius: 3px;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-        transition: background 0.1s, box-shadow 0.1s;
+        transition:
+          background 0.1s,
+          box-shadow 0.1s;
         margin-bottom: 4px;
         border: 1px solid transparent; /* Prepare for border transition */
 
@@ -564,7 +569,9 @@ import { CommonModule, DatePipe } from '@angular/common';
       .cdk-drag-preview {
         box-sizing: border-box;
         border-radius: 4px;
-        box-shadow: 0 5px 5px -3px rgba(0, 0, 0, 0.2), 0 8px 10px 1px rgba(0, 0, 0, 0.14),
+        box-shadow:
+          0 5px 5px -3px rgba(0, 0, 0, 0.2),
+          0 8px 10px 1px rgba(0, 0, 0, 0.14),
           0 3px 14px 2px rgba(0, 0, 0, 0.12);
         background-color: var(--jira-surface-raised);
         color: var(--jira-text);

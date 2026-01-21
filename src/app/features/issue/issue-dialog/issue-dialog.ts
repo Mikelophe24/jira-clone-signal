@@ -51,26 +51,28 @@ import { DatePipe } from '@angular/common';
     <mat-dialog-content class="dialog-content">
       <form class="issue-form" [formGroup]="form">
         <!-- Reporter Info (Only in Edit Mode) -->
-        @if (isEditing && reporterId; as rid) { @if (getUser(rid); as reporter) {
-        <div class="reporter-info">
-          <span class="label">Reporter:</span>
-          <div class="reporter-chip">
-            <img
-              [src]="
-                reporter.photoURL || 'https://ui-avatars.com/api/?name=' + reporter.displayName
-              "
-              class="reporter-avatar"
-            />
-            {{ reporter.displayName }}
-          </div>
-        </div>
-        } }
+        @if (isEditing && reporterId; as rid) {
+          @if (getUser(rid); as reporter) {
+            <div class="reporter-info">
+              <span class="label">Reporter:</span>
+              <div class="reporter-chip">
+                <img
+                  [src]="
+                    reporter.photoURL || 'https://ui-avatars.com/api/?name=' + reporter.displayName
+                  "
+                  class="reporter-avatar"
+                />
+                {{ reporter.displayName }}
+              </div>
+            </div>
+          }
+        }
 
         <mat-form-field appearance="outline">
           <mat-label>Title</mat-label>
           <input matInput formControlName="title" required cdkFocusInitial />
-          @if(form.get('title')?.invalid && form.get('title')?.touched) {
-          <mat-error>Title is required</mat-error>
+          @if (form.get('title')?.invalid && form.get('title')?.touched) {
+            <mat-error>Title is required</mat-error>
           }
         </mat-form-field>
 
@@ -105,9 +107,9 @@ import { DatePipe } from '@angular/common';
             <mat-select formControlName="assigneeId">
               <mat-option [value]="null">Unassigned</mat-option>
               @for (member of projectsStore.members(); track member.uid) {
-              <mat-option [value]="member.uid">
-                {{ member.displayName }}
-              </mat-option>
+                <mat-option [value]="member.uid">
+                  {{ member.displayName }}
+                </mat-option>
               }
             </mat-select>
           </mat-form-field>
@@ -125,26 +127,26 @@ import { DatePipe } from '@angular/common';
       <div class="subtasks-section">
         <h3>Subtasks</h3>
         @if (subtasks.length > 0) {
-        <div class="progress-bar">
-          <div class="progress-fill" [style.width.%]="calculateProgress()"></div>
-        </div>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="calculateProgress()"></div>
+          </div>
         }
 
         <div class="subtask-list">
           @for (s of subtasks; track s.id) {
-          <div class="subtask-item">
-            <mat-checkbox [checked]="s.completed" (change)="toggleSubtask(s)">
-              <span [class.completed-text]="s.completed">{{ s.title }}</span>
-            </mat-checkbox>
-            <button
-              mat-icon-button
-              color="warn"
-              class="delete-subtask-btn"
-              (click)="deleteSubtask(s.id)"
-            >
-              <mat-icon style="font-size: 16px; height: 16px; width: 16px;">close</mat-icon>
-            </button>
-          </div>
+            <div class="subtask-item">
+              <mat-checkbox [checked]="s.completed" (change)="toggleSubtask(s)">
+                <span [class.completed-text]="s.completed">{{ s.title }}</span>
+              </mat-checkbox>
+              <button
+                mat-icon-button
+                color="warn"
+                class="delete-subtask-btn"
+                (click)="deleteSubtask(s.id)"
+              >
+                <mat-icon style="font-size: 16px; height: 16px; width: 16px;">close</mat-icon>
+              </button>
+            </div>
           }
         </div>
         <div class="add-subtask">
@@ -160,62 +162,69 @@ import { DatePipe } from '@angular/common';
 
       <!-- Comments Section (Only for existing issues) -->
       @if (isEditing) {
-      <div class="comments-section">
-        <h3>Comments</h3>
+        <div class="comments-section">
+          <h3>Comments</h3>
 
-        <div class="comment-list">
-          @for (comment of comments; track comment.id) {
-          <div class="comment-item">
-            @if (getUser(comment.userId); as user) {
-            <img
-              [src]="user.photoURL || 'https://ui-avatars.com/api/?name=' + user.displayName"
-              class="comment-avatar"
-            />
-            <div class="comment-content">
-              <div class="comment-header">
-                <span class="comment-author">{{ user.displayName }}</span>
-                <span class="comment-date">{{ comment.createdAt | date : 'short' }}</span>
-                @if (authStore.user()?.uid === comment.userId) {
-                <button
-                  mat-icon-button
-                  class="delete-comment-btn"
-                  (click)="deleteComment(comment.id)"
-                >
-                  <mat-icon style="font-size: 16px; height: 16px; width: 16px; line-height: 16px;"
-                    >delete</mat-icon
-                  >
-                </button>
+          <div class="comment-list">
+            @for (comment of comments; track comment.id) {
+              <div class="comment-item">
+                @if (getUser(comment.userId); as user) {
+                  <img
+                    [src]="user.photoURL || 'https://ui-avatars.com/api/?name=' + user.displayName"
+                    class="comment-avatar"
+                  />
+                  <div class="comment-content">
+                    <div class="comment-header">
+                      <span class="comment-author">{{ user.displayName }}</span>
+                      <span class="comment-date">{{ comment.createdAt | date: 'short' }}</span>
+                      @if (authStore.user()?.uid === comment.userId) {
+                        <button
+                          mat-icon-button
+                          class="delete-comment-btn"
+                          (click)="deleteComment(comment.id)"
+                        >
+                          <mat-icon
+                            style="font-size: 16px; height: 16px; width: 16px; line-height: 16px;"
+                            >delete</mat-icon
+                          >
+                        </button>
+                      }
+                    </div>
+                    <div class="comment-text">{{ comment.content }}</div>
+                  </div>
                 }
               </div>
-              <div class="comment-text">{{ comment.content }}</div>
-            </div>
             }
           </div>
-          }
-        </div>
 
-        <div class="add-comment">
-          @if (authStore.user(); as currentUser) {
-          <img
-            [src]="
-              currentUser.photoURL || 'https://ui-avatars.com/api/?name=' + currentUser.displayName
-            "
-            class="comment-avatar"
-          />
-          }
-          <div class="comment-input-wrapper">
-            <input
-              class="comment-input"
-              placeholder="Add a comment..."
-              [(ngModel)]="newCommentText"
-              (keydown.enter)="addComment()"
-            />
-            <button mat-button color="primary" [disabled]="!newCommentText" (click)="addComment()">
-              Save
-            </button>
+          <div class="add-comment">
+            @if (authStore.user(); as currentUser) {
+              <img
+                [src]="
+                  currentUser.photoURL ||
+                  'https://ui-avatars.com/api/?name=' + currentUser.displayName
+                "
+                class="comment-avatar"
+              />
+            }
+            <div class="comment-input-wrapper">
+              <input
+                class="comment-input"
+                placeholder="Add a comment..."
+                [(ngModel)]="newCommentText"
+                (keydown.enter)="addComment()"
+              />
+              <button
+                mat-button
+                color="primary"
+                [disabled]="!newCommentText"
+                (click)="addComment()"
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -457,9 +466,8 @@ export class IssueDialog {
   private fb = inject(FormBuilder);
   issueService = inject(IssueService);
 
-  form!: FormGroup; // Reactive Form
+  form!: FormGroup;
 
-  // Auxiliary state for things not in the main form or complex UI handling
   comments: any[] = [];
   subtasks: Subtask[] = [];
   reporterId: string | undefined | null = null;
@@ -470,7 +478,7 @@ export class IssueDialog {
 
   constructor(
     public dialogRef: MatDialogRef<IssueDialog>,
-    @Inject(MAT_DIALOG_DATA) public data: IssueDialogData
+    @Inject(MAT_DIALOG_DATA) public data: IssueDialogData,
   ) {
     this.initForm();
 

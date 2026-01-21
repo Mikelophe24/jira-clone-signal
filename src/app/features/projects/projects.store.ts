@@ -46,7 +46,7 @@ export const ProjectsStore = signalStore(
       store,
       projectsService = inject(ProjectsService),
       issueService = inject(IssueService),
-      errorService = inject(ErrorNotificationService)
+      errorService = inject(ErrorNotificationService),
     ) => ({
       loadProjects: rxMethod<string | null>(
         pipe(
@@ -74,10 +74,10 @@ export const ProjectsStore = signalStore(
                 console.error('Error loading projects:', err);
                 errorService.showError(errorMessage);
                 return of([]);
-              })
+              }),
             );
-          })
-        )
+          }),
+        ),
       ),
       loadInvites: rxMethod<string | null>(
         pipe(
@@ -97,13 +97,13 @@ export const ProjectsStore = signalStore(
                 const existingOwners = store.projectOwners();
                 // Simple merge distinct by UID
                 const merged = [...existingOwners, ...newOwners].filter(
-                  (v, i, a) => a.findIndex((t) => t.uid === v.uid) === i
+                  (v, i, a) => a.findIndex((t) => t.uid === v.uid) === i,
                 );
                 patchState(store, { projectOwners: merged });
-              })
+              }),
             );
-          })
-        )
+          }),
+        ),
       ),
       selectProject: (projectId: string) => {
         patchState(store, { selectedProjectId: projectId });
@@ -111,8 +111,8 @@ export const ProjectsStore = signalStore(
       loadMembers: rxMethod<string[]>(
         pipe(
           switchMap((ids) => projectsService.getUsers(ids)),
-          tap((members) => patchState(store, { members }))
-        )
+          tap((members) => patchState(store, { members })),
+        ),
       ),
       deleteProject: async (projectId: string) => {
         try {
@@ -126,6 +126,22 @@ export const ProjectsStore = signalStore(
           const errorMessage = err?.message || 'Failed to delete project';
           console.error('Failed to delete project', err);
           // errorService.showError(errorMessage);
+        }
+      },
+      updateProjectName: async (projectId: string, newName: string) => {
+        try {
+          await projectsService.updateProject(projectId, { name: newName });
+          // Optimistic update
+          patchState(store, {
+            projects: store
+              .projects()
+              .map((p) => (p.id === projectId ? { ...p, name: newName } : p)),
+          });
+          errorService.showSuccess('Project updated successfully');
+        } catch (err: any) {
+          const errorMessage = err?.message || 'Failed to update project';
+          console.error('Failed to update project', err);
+          errorService.showError(errorMessage);
         }
       },
       acceptInvite: async (project: Project, userId: string) => {
@@ -181,7 +197,7 @@ export const ProjectsStore = signalStore(
             await projectsService.inviteUserToProject(
               project.id,
               userToInvite.uid,
-              project.invitedMemberIds
+              project.invitedMemberIds,
             );
             errorService.showSuccess(`Invitation sent to ${email}`);
           }
@@ -221,7 +237,7 @@ export const ProjectsStore = signalStore(
           throw err;
         }
       },
-    })
+    }),
   ),
   withHooks({
     onInit(store) {
@@ -272,5 +288,5 @@ export const ProjectsStore = signalStore(
         }
       });
     },
-  })
+  }),
 );

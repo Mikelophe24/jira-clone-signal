@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthStore } from './core/auth/auth.store';
 import { ProjectsStore } from './features/projects/projects.store';
-import { ThemeStore } from './core/theme/theme.store';
+import { ThemeStore } from './features/theme.store';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';

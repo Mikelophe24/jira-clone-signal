@@ -15,12 +15,17 @@ export class ProjectsService {
     const q = query(this.projectsCollection, where('memberIds', 'array-contains', userId));
     return runInInjectionContext(
       this.injector,
-      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>
+      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>,
     );
   }
 
   addProject(project: Partial<Project>) {
     return addDoc(this.projectsCollection, project);
+  }
+
+  updateProject(projectId: string, data: Partial<Project>) {
+    const docRef = doc(this.firestore, 'projects', projectId);
+    return updateDoc(docRef, data);
   }
 
   deleteProject(projectId: string) {
@@ -64,7 +69,7 @@ export class ProjectsService {
     const q = query(this.projectsCollection, where('invitedMemberIds', 'array-contains', userId));
     return runInInjectionContext(
       this.injector,
-      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>
+      () => collectionData(q, { idField: 'id' }) as Observable<Project[]>,
     );
   }
 

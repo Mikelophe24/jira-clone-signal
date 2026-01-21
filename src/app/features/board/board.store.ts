@@ -100,11 +100,11 @@ export const BoardStore = signalStore(
           filter: { ...state.filter, ...newFilter },
         }));
       },
-      /**
-       * Generate the next issue key for a project
-       * Format: ${projectKey}-${issueCount + 1}
-       * Example: "PROJ-1", "PROJ-2", etc.
-       */
+    
+      //  * Generate the next issue key for a project
+      //  * Format: ${projectKey}-${issueCount + 1}
+      //  * Example: "PROJ-1", "PROJ-2", etc.
+       
       getNextIssueKey: (projectKey: string): string => {
         const projectIssues = store.issues().filter((issue) => issue.key.startsWith(projectKey));
 

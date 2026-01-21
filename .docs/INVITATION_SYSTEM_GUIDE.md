@@ -305,7 +305,11 @@ inviteUserToProject(
    ↓
 ┌──────────────────────────────────────────────────────┐
 │ 8. FIRESTORE PUSH UPDATE (REAL-TIME)                │
-│    → WebSocket notification đến máy Invitee          │
+│    → WebSocket notification đến máy Inv
+
+
+
+itee          │
 └──────────────────────────────────────────────────────┘
    ↓
 ┌──────────────────────────────────────────────────────┐
