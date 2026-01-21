@@ -15,6 +15,7 @@ import {
   FormBuilder,
   Validators,
 } from '@angular/forms';
+import { QuillEditorComponent } from 'ngx-quill';
 import { Issue, IssuePriority, IssueType, Comment, Subtask } from '../issue.model';
 import { IssueService } from '../issue.service';
 
@@ -45,6 +46,7 @@ export interface IssueDialogData {
     FormsModule,
     ReactiveFormsModule,
     DatePipe,
+    QuillEditorComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -90,10 +92,15 @@ export interface IssueDialogData {
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Description</mat-label>
-          <textarea matInput formControlName="description" rows="3"></textarea>
-        </mat-form-field>
+        <div class="field-container">
+          <label class="field-label">Description</label>
+          <quill-editor
+            formControlName="description"
+            [modules]="editorModules"
+            theme="snow"
+            class="content-editor"
+          ></quill-editor>
+        </div>
 
         <div class="row">
           <mat-form-field appearance="outline">
@@ -227,7 +234,7 @@ export interface IssueDialogData {
                         </button>
                       }
                     </div>
-                    <div class="comment-text">{{ comment.content }}</div>
+                    <div class="comment-text" [innerHTML]="comment.content"></div>
                   </div>
                 }
               </div>
@@ -245,12 +252,13 @@ export interface IssueDialogData {
               />
             }
             <div class="comment-input-wrapper">
-              <input
-                class="comment-input"
-                placeholder="Add a comment..."
+              <quill-editor
+                class="comment-editor"
                 [(ngModel)]="newCommentText"
-                (keydown.enter)="addComment()"
-              />
+                [modules]="commentModules"
+                placeholder="Add a comment..."
+                theme="snow"
+              ></quill-editor>
               <button
                 mat-button
                 color="primary"
@@ -335,9 +343,68 @@ export interface IssueDialogData {
         }
       }
 
-      textarea {
-        resize: vertical;
-        min-height: 100px;
+      .field-container {
+        display: flex;
+        flex-direction: column;
+        gap: 6px; /* Slightly tighter gap between label and input */
+        margin-bottom: 16px;
+      }
+
+      .field-label {
+        font-size: 12px;
+        font-family: Roboto, 'Helvetica Neue', sans-serif;
+        color: var(--jira-text-secondary); /* Use var */
+        font-weight: 500;
+        margin-left: 4px;
+        letter-spacing: 0.05em; /* Match Material label somewhat */
+      }
+
+      quill-editor {
+        display: block;
+        background: transparent;
+      }
+
+      /* Dark mode overrides and General Styling for Quill */
+      :host ::ng-deep {
+        .ql-toolbar.ql-snow {
+          border: 1px solid var(--jira-border);
+          border-bottom: none;
+          background-color: var(--jira-surface-raised);
+          border-radius: 4px 4px 0 0;
+          font-family: inherit;
+        }
+
+        .ql-container.ql-snow {
+          border: 1px solid var(--jira-border);
+          background-color: var(--jira-surface-raised);
+          color: var(--jira-text);
+          font-family: inherit;
+          border-radius: 0 0 4px 4px;
+        }
+
+        /* Simulated focus-within if possible, but hard with just CSS on parent. 
+           We can just make it look good inactive and on hover. */
+        .ql-container.ql-snow:hover,
+        .ql-toolbar.ql-snow:hover {
+          /* border-color: #b3b3b3; */ /* Slight darken on hover? */
+        }
+
+        .ql-editor {
+          min-height: 120px; /* Slightly taller */
+          font-family: Roboto, 'Helvetica Neue', sans-serif;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .ql-stroke {
+          stroke: var(--jira-text-secondary);
+        }
+        .ql-fill {
+          fill: var(--jira-text-secondary);
+        }
+        .ql-picker {
+          color: var(--jira-text-secondary);
+        }
       }
 
       .subtasks-section {
@@ -497,12 +564,8 @@ export interface IssueDialogData {
         }
       }
 
-      .comment-input {
-        border: none;
-        outline: none;
+      .comment-editor {
         width: 100%;
-        font-size: 14px;
-        padding: 4px 0;
       }
     `,
   ],
@@ -517,6 +580,27 @@ export class IssueDialog {
   selectableSprints = computed(() =>
     this.sprintStore.sprints().filter((s) => s.status !== 'completed'),
   );
+
+  editorModules = {
+    toolbar: [
+      ['bold', 'italic', 'underline', 'strike'],
+      ['blockquote', 'code-block'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      [{ header: [1, 2, 3, 4, 5, 6, false] }],
+      [{ color: [] }, { background: [] }],
+      ['link'],
+      ['clean'],
+    ],
+  };
+
+  commentModules = {
+    toolbar: [
+      ['bold', 'italic', 'strike'],
+      ['code-block'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['link'],
+    ],
+  };
 
   form!: FormGroup; // Reactive Form
 
