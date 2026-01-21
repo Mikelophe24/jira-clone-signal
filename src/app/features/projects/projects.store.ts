@@ -116,6 +116,9 @@ export const ProjectsStore = signalStore(
       ),
       deleteProject: async (projectId: string) => {
         try {
+          // Clean up issues first
+          await issueService.deleteIssuesByProjectId(projectId);
+
           await projectsService.deleteProject(projectId);
           // Optimistic update: Remove from list locally
           patchState(store, {
