@@ -159,8 +159,8 @@ todoIssues = computed(() => /* filter by status */);
 
 **Ưu điểm:**
 
-- ✅ Single source of truth
-- ✅ No data duplication
+- ✅ Single source of tnruth
+- ✅ No data duplicatio
 - ✅ Auto-update khi issues hoặc filter thay đổi
 
 ---

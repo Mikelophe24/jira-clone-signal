@@ -1302,6 +1302,8 @@ ngOnInit() {
     if (projectId) {
       this.store.loadIssues(projectId);
       this.projectsStore.selectProject(projectId);
+
+      
     }
   });
 }

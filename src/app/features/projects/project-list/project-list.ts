@@ -11,6 +11,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog } from '@angular/material/dialog';
+import { EditProjectDialog } from './edit-project-dialog';
+import { Project } from '../project.model';
 
 @Component({
   selector: 'app-project-list',
@@ -30,7 +33,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
       <div class="header">
         <h2>Your Projects</h2>
         @if (store.loading()) {
-        <mat-spinner diameter="30"></mat-spinner>
+          <mat-spinner diameter="30"></mat-spinner>
         }
       </div>
 
@@ -43,27 +46,38 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
           <mat-card-content>
             <mat-nav-list>
               @for (project of store.projects(); track project.id) {
-              <mat-list-item [routerLink]="['/project', project.id]" class="project-item">
-                <mat-icon matListItemIcon>folder</mat-icon>
-                <h3 matListItemTitle>{{ project.name }}</h3>
-                <p matListItemLine>{{ project.key }}</p>
-                <p matListItemLine class="owner-line">
-                  Created by: {{ getOwnerName(project.ownerId) }}
-                </p>
-                @if (authStore.user()?.uid === project.ownerId) {
-                <button
-                  mat-icon-button
-                  (click)="
-                    $event.preventDefault(); $event.stopPropagation(); deleteProject(project.id)
-                  "
-                  matListItemMeta
-                >
-                  <mat-icon color="warn">delete</mat-icon>
-                </button>
-                }
-              </mat-list-item>
+                <mat-list-item [routerLink]="['/project', project.id]" class="project-item">
+                  <mat-icon matListItemIcon>folder</mat-icon>
+                  <h3 matListItemTitle>{{ project.name }}</h3>
+                  <p matListItemLine>{{ project.key }}</p>
+                  <p matListItemLine class="owner-line">
+                    Created by: {{ getOwnerName(project.ownerId) }}
+                  </p>
+                  @if (authStore.user()?.uid === project.ownerId) {
+                    <div matListItemMeta class="actions">
+                      <button
+                        mat-icon-button
+                        (click)="
+                          $event.preventDefault(); $event.stopPropagation(); editProject(project)
+                        "
+                      >
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button
+                        mat-icon-button
+                        (click)="
+                          $event.preventDefault();
+                          $event.stopPropagation();
+                          deleteProject(project.id)
+                        "
+                      >
+                        <mat-icon color="warn">delete</mat-icon>
+                      </button>
+                    </div>
+                  }
+                </mat-list-item>
               } @empty {
-              <p class="empty-state">No projects found. Create one!</p>
+                <p class="empty-state">No projects found. Create one!</p>
               }
             </mat-nav-list>
           </mat-card-content>
@@ -158,6 +172,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
       .mat-mdc-list-item {
         border-radius: 7px !important;
       }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
     `,
   ],
 })
@@ -165,6 +184,7 @@ export class ProjectList {
   readonly store = inject(ProjectsStore);
   private projectsService = inject(ProjectsService);
   readonly authStore = inject(AuthStore);
+  private dialog = inject(MatDialog);
 
   getOwnerName(ownerId: string): string {
     const currentUser = this.authStore.user();
@@ -192,5 +212,17 @@ export class ProjectList {
     if (confirm('Are you sure you want to delete this project?')) {
       this.store.deleteProject(projectId);
     }
+  }
+
+  editProject(project: Project) {
+    const dialogRef = this.dialog.open(EditProjectDialog, {
+      data: { ...project },
+    });
+
+    dialogRef.afterClosed().subscribe((newName) => {
+      if (newName) {
+        this.store.updateProjectName(project.id, newName);
+      }
+    });
   }
 }

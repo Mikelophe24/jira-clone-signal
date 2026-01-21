@@ -2,28 +2,50 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() { return request.auth != null; }
+    // =========================================================
+    // Auth helper
+    // =========================================================
+    function signedIn() { 
+      // True nếu request có thông tin đăng nhập (Firebase Auth)
+      return request.auth != null; 
+    }
 
-    // --- Helper Functions ---
+    // =========================================================
+    // Project helpers
+    // =========================================================
 
-    // Check if user is a member of the project
     function isProjectMember(projectId) {
+      // Đọc project theo projectId để kiểm tra quyền dựa trên dữ liệu project
       let project = get(/databases/$(database)/documents/projects/$(projectId));
+
+      // True nếu:
+      // - project tồn tại
+      // - uid hiện tại nằm trong memberIds
+      //   HOẶC uid nằm trong invitedMemberIds (nếu invitedMemberIds có tồn tại)
       return project != null && (
         project.data.memberIds.hasAny([request.auth.uid]) || 
         (project.data.invitedMemberIds != null && project.data.invitedMemberIds.hasAny([request.auth.uid]))
       );
     }
     
-    // Check if user is the OWNER of the project
     function isProjectOwner(projectId) {
+      // Đọc project và xác định owner theo ownerId trong project
       let project = get(/databases/$(database)/documents/projects/$(projectId));
+
+      // True nếu project tồn tại và ownerId == uid hiện tại
       return project != null && project.data.ownerId == request.auth.uid;
     }
 
-    // Validate Project Schema on Create
     function isValidNewProject() {
+      // Validate dữ liệu project khi CREATE (tạo mới)
       let data = request.resource.data;
+
+      // Điều kiện hợp lệ:
+      // - Có đủ các field bắt buộc: name, key, ownerId, memberIds
+      // - name là string và không rỗng
+      // - key là string và không rỗng
+      // - ownerId phải đúng bằng uid đang đăng nhập (người tạo chính là owner)
+      // - memberIds phải chứa uid đang đăng nhập (owner đồng thời là member)
       return data.keys().hasAll(['name', 'key', 'ownerId', 'memberIds'])
         && data.name is string && data.name.size() > 0
         && data.key is string && data.key.size() > 0
@@ -31,34 +53,55 @@ service cloud.firestore {
         && data.memberIds.hasAll([request.auth.uid]);
     }
 
-    // Validate Issue Schema
+    // =========================================================
+    // Issue helpers
+    // =========================================================
+
     function isValidIssue() {
+      // Validate tối thiểu dữ liệu issue (được dùng ở CREATE)
       let data = request.resource.data;
-      // Basic checks: title exists and is not empty, type is valid
+
+      // Điều kiện hợp lệ:
+      // - title là string và không rỗng
+      // - type:
+      //   + Nếu không có field type => vẫn hợp lệ
+      //   + Nếu có type => type phải nằm trong ['story','bug','task']
       return data.title is string && data.title.size() > 0
              && (!data.keys().hasAny(['type']) || data.type in ['story', 'bug', 'task']);
     }
 
-    // Prevent changing immutable fields (projectId)
     function notChangingProjectId() {
+      // Chặn update đổi projectId của issue:
+      // - projectId mới (request.resource.data.projectId) phải bằng projectId cũ (resource.data.projectId)
       return request.resource.data.projectId == resource.data.projectId;
     }
 
-    // --- Rules ---
+    // =========================================================
+    // Rules
+    // =========================================================
 
     match /projects/{projectId} {
-      // Read: Users can read a project if they are in the memberIds list OR invitedMemberIds
+
+      // READ project:
+      // - Chỉ cho đọc nếu đã đăng nhập
+      // - Và uid thuộc memberIds hoặc invitedMemberIds của chính project đó
       allow read: if signedIn() && (
         resource.data.memberIds.hasAny([request.auth.uid]) ||
         (resource.data.invitedMemberIds != null && resource.data.invitedMemberIds.hasAny([request.auth.uid]))
       );
       
-      // Strict Create: Must set self as owner and member
+      // CREATE project:
+      // - Chỉ cho tạo nếu đã đăng nhập và dữ liệu tạo mới pass isValidNewProject()
       allow create: if signedIn() && isValidNewProject();
       
-      // Update:
-      // 1. Owner has full write (except changing ownerId to keep it simple)
-      // 2. Members/Invited users can update ONLY non-restricted fields (cannot change name, key, or ownerId)
+      // UPDATE project:
+      // - Chỉ cho update nếu đã đăng nhập
+      // - Và rơi vào 1 trong 2 trường hợp:
+      //   (1) Người update là owner hiện tại của project (resource.data.ownerId == uid)
+      //       => được phép update (không giới hạn field theo rule hiện tại)
+      //   (2) Người update là member hoặc invited của project
+      //       => chỉ được update nếu KHÔNG thay đổi các field: name, key, ownerId
+      //          (tức diff giữa data mới và data cũ không được đụng tới 3 field này)
       allow update: if signedIn() && (
         resource.data.ownerId == request.auth.uid || 
         (
@@ -70,35 +113,58 @@ service cloud.firestore {
         )
       );
       
+      // DELETE project:
+      // - Chỉ owner hiện tại của project được phép xóa
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
 
 
     match /issues/{issueId} {
+
+      // READ issue:
+      // - Chỉ cho đọc nếu đã đăng nhập
+      // - Và (uid là assignee của issue) HOẶC (uid là member/invited của project chứa issue)
       allow read: if signedIn() && (
         resource.data.assigneeId == request.auth.uid || 
         isProjectMember(resource.data.projectId)
       );
 
+      // CREATE issue:
+      // - Chỉ cho tạo nếu đã đăng nhập
+      // - Và uid là member/invited của projectId được set trong issue mới
+      // - Và dữ liệu issue pass validate tối thiểu isValidIssue()
       allow create: if signedIn() 
                     && isProjectMember(request.resource.data.projectId)
                     && isValidIssue();
 
+      // UPDATE issue:
+      // - Điều kiện nền:
+      //   + đã đăng nhập
+      //   + uid là member/invited của project chứa issue (dựa trên resource.data.projectId)
+      //   + không được đổi projectId của issue (notChangingProjectId)
+      // - Sau đó cho phép update nếu:
+      //   (1) uid là assignee HOẶC reporter của issue HOẶC owner của project chứa issue
+      //       => được phép update (không giới hạn field theo rule hiện tại)
+      //   HOẶC
+      //   (2) uid là member/invited bình thường
+      //       => chỉ được update nếu KHÔNG thay đổi các field:
+      //          title, description, type, priority, reporterId, key
+      //          (tức diff giữa data mới và data cũ không được đụng tới các field này)
       allow update: if signedIn() 
                     && isProjectMember(resource.data.projectId)
                     && notChangingProjectId()
                     && (
-                      // 1. Assignee, Reporter hoặc Project Owner có quyền sửa mọi thứ
                       (
                         resource.data.assigneeId == request.auth.uid || 
                         resource.data.reporterId == request.auth.uid || 
                         isProjectOwner(resource.data.projectId)
                       ) ||
-                      // 2. Member bình thường CHỈ được phép đổi status và order (kéo thả)
-                      // Chặn thay đổi title, description, priority, type...
                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['title', 'description', 'type', 'priority', 'reporterId', 'key'])
                     );
 
+      // DELETE issue:
+      // - Chỉ cho xóa nếu đã đăng nhập
+      // - Và (uid là reporter của issue) HOẶC (uid là owner của project chứa issue)
       allow delete: if signedIn() && (
         resource.data.reporterId == request.auth.uid || 
         isProjectOwner(resource.data.projectId)
@@ -106,7 +172,15 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
+
+      // READ user doc:
+      // - Bất kỳ user đã đăng nhập đều có thể đọc /users/{uid}
       allow read: if signedIn();
+
+      // WRITE user doc (create/update/delete):
+      // - Chỉ cho phép nếu đã đăng nhập
+      // - Và uid trên path đúng bằng uid của người đang đăng nhập
+      //   (mỗi người chỉ được ghi document của chính mình)
       allow write: if signedIn() && request.auth.uid == uid;
     }
   }

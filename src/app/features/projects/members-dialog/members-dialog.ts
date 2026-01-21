@@ -31,30 +31,35 @@ import { AuthStore } from '../../../core/auth/auth.store';
       <mat-list>
         <h3 mat-subheader>Current Members</h3>
         @for (member of store.members(); track member.uid) {
-        <mat-list-item>
-          <mat-icon matListItemIcon>person</mat-icon>
-          <div matListItemTitle>{{ member.displayName || member.email }}</div>
-          <div matListItemLine>{{ member.email }}</div>
+          <mat-list-item>
+            <mat-icon matListItemIcon>person</mat-icon>
+            <div matListItemTitle>
+              {{ member.displayName || member.email }}
+              @if (member.uid === projectOwnerId) {
+                <span class="owner-tag">Owner</span>
+              }
+            </div>
+            <div matListItemLine>{{ member.email }}</div>
 
-          <!-- Actions -->
-          <div matListItemMeta>
-            <!-- Owner removes other members -->
-            @if (isOwner && member.uid !== currentUser?.uid) {
-            <button
-              mat-icon-button
-              (click)="removeMember(member.uid)"
-              color="warn"
-              matTooltip="Remove member"
-            >
-              <mat-icon>remove_circle_outline</mat-icon>
-            </button>
-            }
-            <!-- Member leaves project -->
-            @if (!isOwner && member.uid === currentUser?.uid) {
-            <button mat-button color="warn" (click)="leaveProject(member.uid)">Leave</button>
-            }
-          </div>
-        </mat-list-item>
+            <!-- Actions -->
+            <div matListItemMeta>
+              <!-- Owner removes other members -->
+              @if (isOwner && member.uid !== currentUser?.uid) {
+                <button
+                  mat-icon-button
+                  (click)="removeMember(member.uid)"
+                  color="warn"
+                  matTooltip="Remove member"
+                >
+                  <mat-icon>remove_circle_outline</mat-icon>
+                </button>
+              }
+              <!-- Member leaves project -->
+              @if (!isOwner && member.uid === currentUser?.uid) {
+                <button mat-button color="warn" (click)="leaveProject(member.uid)">Leave</button>
+              }
+            </div>
+          </mat-list-item>
         }
       </mat-list>
 
@@ -62,23 +67,29 @@ import { AuthStore } from '../../../core/auth/auth.store';
 
       <!-- Add New Member (Only Owner) -->
       @if (isOwner) {
-      <h3>Add Member</h3>
-      <div class="add-form">
-        <mat-form-field appearance="outline" class="email-input">
-          <mat-label>User Email</mat-label>
-          <input matInput [(ngModel)]="emailToAdd" placeholder="friend@example.com" />
-        </mat-form-field>
-        <button
-          mat-raised-button
-          color="primary"
-          (click)="addMember()"
-          [disabled]="store.loading() || !emailToAdd"
-        >
-          <mat-icon>person_add</mat-icon> Add
-        </button>
-      </div>
-      } @if (error) {
-      <p class="error">{{ error }}</p>
+        <h3>Add Member</h3>
+        <div class="add-form">
+          <mat-form-field
+            appearance="outline"
+            class="email-input compact-input"
+            subscriptSizing="dynamic"
+          >
+            <mat-label>User Email</mat-label>
+            <input matInput [(ngModel)]="emailToAdd" placeholder="friend@example.com" />
+          </mat-form-field>
+          <button
+            mat-raised-button
+            color="primary"
+            class="add-btn"
+            (click)="addMember()"
+            [disabled]="store.loading() || !emailToAdd"
+          >
+            <mat-icon>person_add</mat-icon> Add
+          </button>
+        </div>
+      }
+      @if (error) {
+        <p class="error">{{ error }}</p>
       }
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -94,15 +105,60 @@ import { AuthStore } from '../../../core/auth/auth.store';
       }
       .add-form {
         display: flex;
-        gap: 8px;
-        align-items: center;
+        gap: 12px;
+        align-items: center; /* Center alignment */
+        margin-bottom: 8px;
       }
       .email-input {
         flex: 1;
+        font-size: 13px;
       }
+
+      /* Force compact height for the input */
+      ::ng-deep .compact-input .mat-mdc-text-field-wrapper {
+        height: 40px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
+      ::ng-deep .compact-input .mat-mdc-form-field-infix {
+        padding-top: 8px !important;
+        padding-bottom: 0 !important;
+        min-height: 40px !important;
+      }
+      ::ng-deep .compact-input .mat-mdc-input-element {
+        margin-top: -6px; /* Pull text up slightly to center */
+      }
+      /* Adjust label position */
+      ::ng-deep .compact-input .mat-mdc-floating-label {
+        top: 10px !important;
+      }
+      ::ng-deep .compact-input.mat-focused .mat-mdc-floating-label,
+      ::ng-deep .compact-input.mat-form-field-has-label .mat-mdc-floating-label--float-above {
+        top: 10px !important; /* Keep it relatively positioned */
+        transform: translateY(-20px) scale(0.75) !important;
+      }
+
+      .add-btn {
+        height: 40px !important; /* Match input height */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
       .error {
         color: #d32f2f;
-        margin-top: 8px;
+        margin-top: 4px;
+        font-size: 13px;
+      }
+      .owner-tag {
+        font-size: 0.75rem;
+        background-color: #e0e0e0;
+        color: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 8px;
+        font-weight: 500;
+        vertical-align: middle;
       }
     `,
   ],
@@ -124,6 +180,10 @@ export class MembersDialog {
   get isOwner() {
     const project = this.store.selectedProject();
     return project?.ownerId === this.currentUser?.uid;
+  }
+
+  get projectOwnerId() {
+    return this.store.selectedProject()?.ownerId;
   }
 
   async addMember() {
