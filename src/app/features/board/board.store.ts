@@ -10,7 +10,7 @@ import { inject, computed, effect } from '@angular/core';
 import { IssueService } from '../issue/issue.service';
 import { Issue } from '../issue/issue.model';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
-import { pipe, tap, switchMap, catchError } from 'rxjs';
+import { pipe, tap, switchMap, catchError, distinctUntilChanged } from 'rxjs';
 import { of } from 'rxjs';
 import { produce } from 'immer';
 import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
@@ -84,7 +84,7 @@ export const BoardStore = signalStore(
     return {
       todoIssues: computed(() => sortedFilteredIssues().filter((i) => i.statusColumnId === 'todo')),
       inProgressIssues: computed(() =>
-        sortedFilteredIssues().filter((i) => i.statusColumnId === 'in-progress')
+        sortedFilteredIssues().filter((i) => i.statusColumnId === 'in-progress'),
       ),
       doneIssues: computed(() => sortedFilteredIssues().filter((i) => i.statusColumnId === 'done')),
     };
@@ -93,18 +93,18 @@ export const BoardStore = signalStore(
     (
       store,
       issueService: IssueService = inject(IssueService),
-      errorService: ErrorNotificationService = inject(ErrorNotificationService)
+      errorService: ErrorNotificationService = inject(ErrorNotificationService),
     ) => ({
       updateFilter: (newFilter: Partial<BoardFilter>) => {
         patchState(store, (state) => ({
           filter: { ...state.filter, ...newFilter },
         }));
       },
-    
+
       //  * Generate the next issue key for a project
       //  * Format: ${projectKey}-${issueCount + 1}
       //  * Example: "PROJ-1", "PROJ-2", etc.
-       
+
       getNextIssueKey: (projectKey: string): string => {
         const projectIssues = store.issues().filter((issue) => issue.key.startsWith(projectKey));
 
@@ -135,18 +135,20 @@ export const BoardStore = signalStore(
               return of([]);
             }
             return issueService.getIssues(projectId).pipe(
+              distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
               tap((issues) => {
                 patchState(store, { issues });
                 store.setLoading(false);
+                console.log('Issues loaded:');
               }),
               catchError((error) => {
                 const errorMessage = error?.message || 'Failed to load issues';
                 errorService.showError(errorMessage);
                 return of([]);
-              })
+              }),
             );
-          })
-        )
+          }),
+        ),
       ),
       moveIssue: (event: CdkDragDrop<Issue[]>, newStatus: string) => {
         const movedIssue = event.item.data as Issue;
@@ -177,7 +179,7 @@ export const BoardStore = signalStore(
                     issue.order = update.data.order!;
                   }
                 });
-              })
+              }),
             );
 
             // 4. Cập nhật hàng loạt (Batch Update) lên Firestore
@@ -210,7 +212,7 @@ export const BoardStore = signalStore(
                 issue.statusColumnId = newStatus;
                 issue.order = newOrder;
               }
-            })
+            }),
           );
 
           // Cập nhật lên Firestore
@@ -246,7 +248,7 @@ export const BoardStore = signalStore(
 
         patchState(store, (state) => ({
           issues: state.issues.map((issue) =>
-            issue.id === issueId ? { ...issue, ...updates } : issue
+            issue.id === issueId ? { ...issue, ...updates } : issue,
           ),
         }));
 
@@ -260,7 +262,7 @@ export const BoardStore = signalStore(
           patchState(store, { issues: originalIssues });
         }
       },
-    })
+    }),
   ),
 
   withHooks({
@@ -272,5 +274,5 @@ export const BoardStore = signalStore(
         }
       });
     },
-  })
+  }),
 );

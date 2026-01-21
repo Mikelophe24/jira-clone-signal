@@ -116,6 +116,9 @@ export const ProjectsStore = signalStore(
       ),
       deleteProject: async (projectId: string) => {
         try {
+          // Clean up issues first
+          await issueService.deleteIssuesByProjectId(projectId);
+
           await projectsService.deleteProject(projectId);
           // Optimistic update: Remove from list locally
           patchState(store, {
@@ -125,7 +128,7 @@ export const ProjectsStore = signalStore(
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to delete project';
           console.error('Failed to delete project', err);
-          // errorService.showError(errorMessage);
+          errorService.showError(errorMessage);
         }
       },
       updateProjectName: async (projectId: string, newName: string) => {
