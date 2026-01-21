@@ -128,7 +128,7 @@ export const ProjectsStore = signalStore(
         } catch (err: any) {
           const errorMessage = err?.message || 'Failed to delete project';
           console.error('Failed to delete project', err);
-          // errorService.showError(errorMessage);
+          errorService.showError(errorMessage);
         }
       },
       updateProjectName: async (projectId: string, newName: string) => {

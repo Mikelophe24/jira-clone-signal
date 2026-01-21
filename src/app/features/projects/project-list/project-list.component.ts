@@ -12,7 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
-import { EditProjectDialog } from './edit-project-dialog';
+import { EditProjectDialog } from './edit-project-dialog.component';
 import { Project } from '../project.model';
 
 @Component({

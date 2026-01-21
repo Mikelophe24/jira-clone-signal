@@ -2,7 +2,7 @@ import { Component, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProjectsStore } from '../../projects/projects.store';
 import { BoardStore } from '../board.store';
-import { IssueDialog } from '../../issue/issue-dialog/issue-dialog';
+import { IssueDialog } from '../../issue/issue-dialog/issue-dialog.component';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -32,43 +32,45 @@ import { AuthStore } from '../../../core/auth/auth.store';
 
       <div class="issues-list">
         @for (issue of backlogIssues(); track issue.id) {
-        <div class="backlog-item">
-          <div class="item-left">
-            <mat-icon [style.color]="getPriorityColor(issue.priority)">
-              {{ getPriorityIcon(issue.priority) }}
-            </mat-icon>
-            <div class="issue-key">{{ issue.key }}</div>
-            <div class="issue-title">{{ issue.title }}</div>
-          </div>
-
-          <div class="item-right">
-            <div class="assignee">
-              @if (getAssignee(issue.assigneeId); as assignee) {
-              <img
-                [src]="
-                  assignee.photoURL ||
-                  'https://ui-avatars.com/api/?name=' + assignee.displayName + '&background=random'
-                "
-                class="assignee-avatar"
-                [matTooltip]="assignee.displayName"
-              />
-              } @else {
-              <span class="unassigned-text">Unassigned</span>
-              }
+          <div class="backlog-item">
+            <div class="item-left">
+              <mat-icon [style.color]="getPriorityColor(issue.priority)">
+                {{ getPriorityIcon(issue.priority) }}
+              </mat-icon>
+              <div class="issue-key">{{ issue.key }}</div>
+              <div class="issue-title">{{ issue.title }}</div>
             </div>
-            <button mat-stroked-button color="primary" (click)="moveToBoard(issue.id)">
-              Move to Board
-            </button>
-            <button mat-icon-button (click)="editIssue(issue)">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button mat-icon-button color="warn" (click)="deleteIssue(issue.id, issue.key)">
-              <mat-icon>delete</mat-icon>
-            </button>
+
+            <div class="item-right">
+              <div class="assignee">
+                @if (getAssignee(issue.assigneeId); as assignee) {
+                  <img
+                    [src]="
+                      assignee.photoURL ||
+                      'https://ui-avatars.com/api/?name=' +
+                        assignee.displayName +
+                        '&background=random'
+                    "
+                    class="assignee-avatar"
+                    [matTooltip]="assignee.displayName"
+                  />
+                } @else {
+                  <span class="unassigned-text">Unassigned</span>
+                }
+              </div>
+              <button mat-stroked-button color="primary" (click)="moveToBoard(issue.id)">
+                Move to Board
+              </button>
+              <button mat-icon-button (click)="editIssue(issue)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="deleteIssue(issue.id, issue.key)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
           </div>
-        </div>
         } @empty {
-        <div class="empty-state">No issues in the backlog.</div>
+          <div class="empty-state">No issues in the backlog.</div>
         }
       </div>
     </div>
