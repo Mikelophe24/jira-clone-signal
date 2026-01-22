@@ -33,14 +33,12 @@ import { FormsModule } from '@angular/forms';
 
         <mat-card-content class="content">
           @if (store.loading()) {
-          <div class="spinner-container">
-            <mat-spinner diameter="40"></mat-spinner>
-          </div>
-          } @if (store.error()) {
-          <p class="error-message">{{ store.error() }}</p>
+            <div class="spinner-container">
+              <mat-spinner diameter="40"></mat-spinner>
+            </div>
           }
 
-          <mat-tab-group>
+          <mat-tab-group (selectedTabChange)="store.clearError()">
             <mat-tab label="Login">
               <div class="form-container">
                 <mat-form-field appearance="outline">
@@ -51,6 +49,16 @@ import { FormsModule } from '@angular/forms';
                   <mat-label>Password</mat-label>
                   <input matInput [(ngModel)]="password" type="password" (keyup.enter)="login()" />
                 </mat-form-field>
+
+                @if (store.error()) {
+                  <p
+                    [class.error-message]="!store.error()?.includes('thành công')"
+                    [class.success-message]="store.error()?.includes('thành công')"
+                  >
+                    {{ store.error() }}
+                  </p>
+                }
+
                 <button
                   mat-raised-button
                   color="primary"
@@ -80,11 +88,25 @@ import { FormsModule } from '@angular/forms';
                     (keyup.enter)="register()"
                   />
                 </mat-form-field>
+
+                @if (store.error()) {
+                  <p
+                    [class.error-message]="
+                      !store.error()?.includes('thành công') && !store.error()?.includes('xác nhận')
+                    "
+                    [class.success-message]="
+                      store.error()?.includes('thành công') || store.error()?.includes('xác nhận')
+                    "
+                  >
+                    {{ store.error() }}
+                  </p>
+                }
+
                 <button
                   mat-raised-button
                   color="accent"
                   (click)="register()"
-                  [disabled]="store.loading()"
+                  [disabled]="store.loading() || store.isWaitingForVerification()"
                 >
                   Register
                 </button>
@@ -147,9 +169,25 @@ import { FormsModule } from '@angular/forms';
       }
       .error-message {
         color: #d32f2f;
+        background-color: #ffebee;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 13px;
         font-weight: 500;
         text-align: center;
         margin-bottom: 16px;
+        border: 1px solid #ffcdd2;
+      }
+      .success-message {
+        color: #2e7d32;
+        background-color: #e8f5e9;
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        text-align: center;
+        margin-bottom: 16px;
+        border: 1px solid #c8e6c9;
       }
       .divider {
         text-align: center;
@@ -176,7 +214,8 @@ export class Login {
 
   constructor() {
     effect(() => {
-      if (this.store.user()) {
+      const user = this.store.user();
+      if (user && user.emailVerified) {
         this.router.navigate(['/projects']);
       }
     });

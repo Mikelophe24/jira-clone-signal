@@ -37,7 +37,7 @@ import { Router } from '@angular/router';
   template: `
     <div class="app-container">
       <mat-toolbar class="main-toolbar">
-        @if (authStore.user()) {
+        @if (authStore.isAuthorized()) {
           <button mat-icon-button (click)="toggleSidebar()" title="Toggle Sidebar">
             <mat-icon>menu</mat-icon>
           </button>
@@ -51,7 +51,7 @@ import { Router } from '@angular/router';
           <mat-icon>{{ themeStore.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
         </button>
 
-        @if (authStore.user()) {
+        @if (authStore.isAuthorized()) {
           <!-- Notifications -->
           <!-- Notifications -->
           <button
@@ -125,7 +125,7 @@ import { Router } from '@angular/router';
             }
           </mat-menu>
 
-          @if (authStore.user(); as user) {
+          @if (authStore.isAuthorized() && authStore.user(); as user) {
             <img
               [src]="
                 user.photoURL ||
@@ -136,7 +136,9 @@ import { Router } from '@angular/router';
             />
           }
 
-          <span class="user-name">{{ authStore.user()?.displayName }}</span>
+          <span class="user-name">{{
+            authStore.isAuthorized() ? authStore.user()?.displayName : ''
+          }}</span>
           <button mat-icon-button (click)="authStore.logout()" title="Logout">
             <mat-icon>logout</mat-icon>
           </button>
@@ -146,7 +148,7 @@ import { Router } from '@angular/router';
       </mat-toolbar>
 
       <mat-sidenav-container class="sidenav-container">
-        @if (authStore.user()) {
+        @if (authStore.isAuthorized()) {
           <mat-sidenav mode="side" [opened]="sidebarOpened()" class="main-sidenav">
             <mat-nav-list>
               <a

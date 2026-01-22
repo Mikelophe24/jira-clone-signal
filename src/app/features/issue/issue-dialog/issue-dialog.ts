@@ -217,15 +217,16 @@ export interface IssueDialogData {
                     placeholder="Add a comment..."
                     theme="snow"
                   ></quill-editor>
-                  <button
-                    mat-raised-button
-                    color="primary"
-                    [disabled]="newCommentControl.invalid || !newCommentControl.value"
-                    (click)="addComment()"
-                    style="margin-top: 8px;"
-                  >
-                    Save
-                  </button>
+                  <div class="comment-actions">
+                    <button
+                      mat-raised-button
+                      color="primary"
+                      [disabled]="newCommentControl.invalid || !newCommentControl.value"
+                      (click)="addComment()"
+                    >
+                      Comment
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -464,6 +465,8 @@ export interface IssueDialogData {
         line-height: 1.5;
         resize: none;
         box-sizing: border-box;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
       .description-textarea:focus {
         outline: none;
@@ -535,14 +538,23 @@ export interface IssueDialogData {
         display: flex;
         gap: 12px;
         margin-bottom: 24px;
+        align-items: flex-start;
       }
       .comment-input-wrapper {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 0;
       }
       .comment-editor {
+        display: block;
+        width: 100%;
         background: #fff;
-        border: 1px solid #dfe1e6; /* Ensure border visible */
-        border-radius: 4px;
+      }
+      .comment-actions {
+        display: flex;
+        justify-content: flex-start;
       }
 
       .comment-list {
@@ -582,6 +594,8 @@ export interface IssueDialogData {
         font-size: 14px;
         line-height: 1.5;
         color: #172b4d;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
 
       .dialog-footer {
@@ -612,6 +626,16 @@ export interface IssueDialogData {
         align-items: center;
         padding: 6px 0;
         border-bottom: 1px solid #f4f5f7;
+        gap: 8px;
+      }
+      .subtask-item mat-checkbox {
+        flex: 1;
+        min-width: 0;
+      }
+      ::ng-deep .subtask-item .mdc-label {
+        white-space: normal !important;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
       .subtask-item:hover {
         background: #fafbfc;
@@ -638,7 +662,11 @@ export interface IssueDialogData {
         background: #fff;
       }
       :host ::ng-deep .comment-editor .ql-container {
-        min-height: 80px;
+        min-height: 100px;
+      }
+      :host ::ng-deep .ql-editor {
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
 
       /* Attachments */
@@ -668,6 +696,9 @@ export interface IssueDialogData {
         color: #172b4d;
         font-weight: 500;
         font-size: 14px;
+        overflow-wrap: break-word;
+        word-break: break-all;
+        min-width: 0;
       }
       .attachment-link:hover {
         color: #0052cc;

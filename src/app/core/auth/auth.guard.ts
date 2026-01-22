@@ -10,10 +10,10 @@ export const authGuard: CanActivateFn = () => {
   return authService.user$.pipe(
     take(1),
     map((user) => {
-      if (user) {
+      if (user && user.emailVerified) {
         return true;
       }
       return router.createUrlTree(['/login']);
-    })
+    }),
   );
 };

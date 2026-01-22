@@ -8,6 +8,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
+  sendEmailVerification,
 } from 'firebase/auth';
 import { Firestore } from '@angular/fire/firestore';
 import { doc, setDoc } from 'firebase/firestore';
@@ -43,12 +44,19 @@ export class AuthService {
       // Reload user to get updated profile
       await cred.user.reload();
       await this.syncUserToFirestore(this.auth.currentUser || cred.user);
+
+      // Send verification email
+      await sendEmailVerification(cred.user);
     }
     return cred;
   }
 
   logout() {
     return signOut(this.auth);
+  }
+
+  getCurrentUser() {
+    return this.auth.currentUser;
   }
 
   private async syncUserToFirestore(user: User) {
@@ -61,7 +69,7 @@ export class AuthService {
         email: user.email,
         photoURL: user.photoURL,
       },
-      { merge: true }
+      { merge: true },
     );
   }
 }
