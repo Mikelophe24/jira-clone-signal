@@ -168,6 +168,7 @@ export const ProjectsStore = signalStore(
         store.setLoading(true);
         try {
           const users = await firstValueFrom(projectsService.findUserByEmail(email));
+
           if (users.length === 0) throw new Error('User not found');
           const userToInvite = users[0];
           const project = store.selectedProject();
@@ -191,8 +192,8 @@ export const ProjectsStore = signalStore(
             );
             errorService.showSuccess(`Invitation sent to ${email}`);
           }
-          store.setLoading(false);
         } catch (err: any) {
+          store.setLoading(false);
           const errorMessage = err?.message || 'Failed to invite user';
           console.error(err);
           errorService.showError(errorMessage);

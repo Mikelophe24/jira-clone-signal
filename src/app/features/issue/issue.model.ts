@@ -6,12 +6,23 @@ export interface Comment {
   userId: string;
   content: string;
   createdAt: string; // ISO string
+  safeContent?: any; // Sanitized HTML content
 }
 
 export interface Subtask {
   id: string;
   title: string;
   completed: boolean;
+}
+
+export interface Attachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+  uploaderId: string;
 }
 
 export interface Issue {
@@ -32,5 +43,6 @@ export interface Issue {
   isInBacklog?: boolean;
   dueDate?: string; // ISO string
   subtasks?: Subtask[];
+  attachments?: Attachment[];
   isArchived?: boolean;
 }

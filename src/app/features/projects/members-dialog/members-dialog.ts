@@ -8,7 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { ProjectsStore } from '../projects.store';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { CommonModule } from '@angular/common';
@@ -26,6 +26,7 @@ import { CommonModule } from '@angular/common';
     MatSelectModule,
     MatTooltipModule,
     FormsModule,
+    ReactiveFormsModule,
     CommonModule,
   ],
   template: `
@@ -39,9 +40,9 @@ import { CommonModule } from '@angular/common';
             <mat-icon matListItemIcon>person</mat-icon>
             <div matListItemTitle>
               {{ member.displayName || member.email }}
-              @if (member.uid === store.selectedProject()?.ownerId) {
-                <span class="owner-badge">(Owner)</span>
-              }
+              <span class="role-badge" [ngClass]="getRole(member.uid)">
+                {{ getRoleLabel(member.uid) }}
+              </span>
             </div>
             <div matListItemLine>{{ member.email }}</div>
 
@@ -75,7 +76,10 @@ import { CommonModule } from '@angular/common';
         <div class="add-form-container">
           <mat-form-field appearance="outline" class="email-input">
             <mat-label>User Email</mat-label>
-            <input matInput [(ngModel)]="emailToAdd" placeholder="friend@example.com" />
+            <input matInput [formControl]="emailControl" placeholder="friend@example.com" />
+            @if (emailControl.invalid && (emailControl.dirty || emailControl.touched)) {
+              <mat-error>Please enter a valid email address</mat-error>
+            }
           </mat-form-field>
 
           <div class="role-selector-row">
@@ -126,7 +130,7 @@ import { CommonModule } from '@angular/common';
           mat-raised-button
           color="primary"
           (click)="addMember()"
-          [disabled]="store.loading() || !emailToAdd"
+          [disabled]="store.loading() || emailControl.invalid"
         >
           <mat-icon>person_add</mat-icon> Invite
         </button>
@@ -154,7 +158,7 @@ import { CommonModule } from '@angular/common';
       .email-input {
         flex: 1;
         width: 100%;
-        margin-bottom: -1.25em; /* Remove extra space from mat-form-field */
+        /* margin-bottom: -1.25em; Remove this to fix overlap with error message */
       }
       .add-btn {
         height: 56px;
@@ -168,7 +172,7 @@ import { CommonModule } from '@angular/common';
       .role-input {
         flex: 1; /* Take remaining space */
         width: auto; /* Allow flex to control width */
-        margin-bottom: -1.25em;
+        /* margin-bottom: -1.25em; Remove this as well */
       }
       .role-option {
         display: flex;
@@ -190,11 +194,25 @@ import { CommonModule } from '@angular/common';
         color: #d32f2f;
         margin-top: 16px;
       }
-      .owner-badge {
+      .role-badge {
         font-size: 12px;
-        color: #0052cc;
         margin-left: 8px;
         font-weight: 500;
+        color: #5e6c84;
+      }
+      /* Specific colors for ROLES */
+      .role-badge.owner {
+        color: #0052cc;
+      }
+      .role-badge.admin {
+        color: #0065ff;
+      }
+      .role-badge.member {
+        color: #42526e;
+      }
+      .role-badge.viewer {
+        color: #6b778c;
+        font-style: italic;
       }
     `,
   ],
@@ -205,28 +223,51 @@ export class MembersDialog {
   private router = inject(Router);
   private dialogRef = inject(MatDialogRef);
 
-  emailToAdd = '';
+  emailControl = new FormControl('', [Validators.required, Validators.email]);
   selectedRole: 'admin' | 'member' | 'viewer' = 'member';
   error = '';
 
   get currentUser() {
     return this.authStore.user();
   }
-  //dùng get để khi gọi ra ko phải ()
 
   get isOwner() {
     const project = this.store.selectedProject();
     return project?.ownerId === this.currentUser?.uid;
   }
 
+  getRole(uid: string): string {
+    const project = this.store.selectedProject();
+    if (!project) return '';
+    if (project.ownerId === uid) return 'owner';
+    return project.roles?.[uid] || 'member';
+  }
+
+  getRoleLabel(uid: string): string {
+    const role = this.getRole(uid);
+    switch (role) {
+      case 'owner':
+        return '(Owner)';
+      case 'admin':
+        return '(Admin)';
+      case 'viewer':
+        return '(Viewer)';
+      default:
+        return '(Member)';
+    }
+  }
+
   async addMember() {
-    if (!this.emailToAdd) return;
+    if (this.emailControl.invalid) return;
+    const email = this.emailControl.value;
+    if (!email) return;
+
     this.error = '';
 
     try {
       // Pass the selectedRole to the store action
-      await this.store.inviteUser(this.emailToAdd, this.selectedRole);
-      this.emailToAdd = '';
+      await this.store.inviteUser(email, this.selectedRole);
+      this.emailControl.reset();
       // Reset to default
       this.selectedRole = 'member';
       alert('Invitation sent!');

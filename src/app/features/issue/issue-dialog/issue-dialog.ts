@@ -1,4 +1,15 @@
-import { Component, Inject, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import {
+  Component,
+  Inject,
+  inject,
+  ChangeDetectionStrategy,
+  computed,
+  ChangeDetectorRef,
+  DestroyRef,
+  SecurityContext,
+} from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -14,15 +25,18 @@ import {
   FormGroup,
   FormBuilder,
   Validators,
+  FormControl,
 } from '@angular/forms';
 import { QuillEditorComponent } from 'ngx-quill';
-import { Issue, IssuePriority, IssueType, Comment, Subtask } from '../issue.model';
+import { Issue, IssuePriority, IssueType, Comment, Subtask, Attachment } from '../issue.model';
 import { IssueService } from '../issue.service';
 
 import { ProjectsStore } from '../../projects/projects.store';
 import { SprintStore } from '../../board/sprint.store';
 import { AuthStore } from '../../../core/auth/auth.store'; // Adjust path if needed
+import { NotificationStore } from '../../notifications/notification.store';
 import { DatePipe } from '@angular/common';
+import DOMPurify from 'dompurify';
 
 export interface IssueDialogData {
   statusColumnId: string;
@@ -49,372 +63,540 @@ export interface IssueDialogData {
     QuillEditorComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
+
   template: `
-    <h2 mat-dialog-title>{{ isEditing ? 'Edit Issue' : 'Create Issue' }}</h2>
-    <mat-dialog-content class="dialog-content">
-      <form class="issue-form" [formGroup]="form">
-        <!-- Reporter Info (Only in Edit Mode) -->
-        @if (isEditing && reporterId; as rid) {
-          <div class="meta-row">
-            @if (getUser(rid); as reporter) {
-              <div class="reporter-info">
-                <span class="label">Reporter:</span>
-                <div class="reporter-chip">
-                  <img
-                    [src]="
-                      reporter.photoURL ||
-                      'https://ui-avatars.com/api/?name=' + reporter.displayName
-                    "
-                    class="reporter-avatar"
-                  />
-                  {{ reporter.displayName }}
-                </div>
-              </div>
-            }
-            @if (form.get('sprintId')?.value; as sprintId) {
-              @if (getSprint(sprintId); as sprint) {
-                <div class="sprint-info">
-                  <span class="label">Sprint:</span>
-                  <div class="sprint-chip">
-                    {{ sprint.name }}
-                  </div>
-                </div>
-              }
-            }
-          </div>
-        }
-
-        <mat-form-field appearance="outline">
-          <mat-label>Title</mat-label>
-          <input matInput formControlName="title" required cdkFocusInitial />
-          @if (form.get('title')?.invalid && form.get('title')?.touched) {
-            <mat-error>Title is required</mat-error>
-          }
-        </mat-form-field>
-
-        <div class="field-container">
-          <label class="field-label">Description</label>
-          <quill-editor
-            formControlName="description"
-            [modules]="editorModules"
-            theme="snow"
-            class="content-editor"
-          ></quill-editor>
-        </div>
-
-        <div class="row">
-          <mat-form-field appearance="outline">
-            <mat-label>Type</mat-label>
-            <mat-select formControlName="type">
-              <mat-option value="task">Task</mat-option>
-              <mat-option value="bug">Bug</mat-option>
-              <mat-option value="story">Story</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Status</mat-label>
-            <mat-select formControlName="statusColumnId">
-              <mat-option value="todo">To Do</mat-option>
-              <mat-option value="in-progress">In Progress</mat-option>
-              <mat-option value="done">Done</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Priority</mat-label>
-            <mat-select formControlName="priority">
-              <mat-option value="low">Low</mat-option>
-              <mat-option value="medium">Medium</mat-option>
-              <mat-option value="high">High</mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="row">
-          <mat-form-field appearance="outline">
-            <mat-label>Sprint</mat-label>
-            <mat-select formControlName="sprintId">
-              <mat-option value="backlog">Backlog</mat-option>
-              @for (sprint of selectableSprints(); track sprint.id) {
-                <mat-option [value]="sprint.id">
-                  {{ sprint.name }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Assignee</mat-label>
-            <mat-select formControlName="assigneeId">
-              <mat-option [value]="null">Unassigned</mat-option>
-              @for (member of projectsStore.members(); track member.uid) {
-                <mat-option [value]="member.uid">
-                  {{ member.displayName }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="row">
-          <mat-form-field appearance="outline">
-            <mat-label>Due Date</mat-label>
-            <input matInput [matDatepicker]="picker" formControlName="dueDate" />
-            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-            <mat-datepicker #picker></mat-datepicker>
-          </mat-form-field>
-        </div>
-      </form>
-
-      <!-- Subtasks Section -->
-      <div class="subtasks-section">
-        <h3>Subtasks</h3>
-        @if (subtasks.length > 0) {
-          <div class="progress-bar">
-            <div class="progress-fill" [style.width.%]="calculateProgress()"></div>
-          </div>
-        }
-
-        <div class="subtask-list">
-          @for (s of subtasks; track s.id) {
-            <div class="subtask-item">
-              <mat-checkbox [checked]="s.completed" (change)="toggleSubtask(s)">
-                <span [class.completed-text]="s.completed">{{ s.title }}</span>
-              </mat-checkbox>
-              <button
-                mat-icon-button
-                color="warn"
-                class="delete-subtask-btn"
-                (click)="deleteSubtask(s.id)"
-              >
-                <mat-icon style="font-size: 16px; height: 16px; width: 16px;">close</mat-icon>
-              </button>
-            </div>
-          }
-        </div>
-        <div class="add-subtask">
-          <input
-            class="subtask-input"
-            placeholder="Add a subtask..."
-            [(ngModel)]="newSubtaskTitle"
-            (keydown.enter)="addSubtask()"
-          />
-          <button mat-button (click)="addSubtask()" [disabled]="!newSubtaskTitle">Add</button>
+    <div class="dialog-container">
+      <div class="dialog-header">
+        <h2 mat-dialog-title style="margin:0; font-size:20px; font-weight:500;">
+          {{ isEditing ? 'Edit Issue' : 'Create Issue' }}
+        </h2>
+        <div class="header-actions">
+          <!-- Potential for more actions -->
         </div>
       </div>
 
-      <!-- Comments Section (Only for existing issues) -->
-      @if (isEditing) {
-        <div class="comments-section">
-          <h3>Comments</h3>
+      <mat-dialog-content class="dialog-content-layout">
+        <div class="main-column">
+          <form [formGroup]="form" class="main-form">
+            <mat-form-field appearance="outline" class="title-field">
+              <mat-label>Title</mat-label>
+              <input
+                matInput
+                formControlName="title"
+                required
+                cdkFocusInitial
+                style="font-size: 18px; font-weight: 500;"
+              />
+              @if (form.get('title')?.invalid && form.get('title')?.touched) {
+                <mat-error>Title is required</mat-error>
+              }
+            </mat-form-field>
 
-          <div class="comment-list">
-            @for (comment of comments; track comment.id) {
-              <div class="comment-item">
-                @if (getUser(comment.userId); as user) {
-                  <img
-                    [src]="user.photoURL || 'https://ui-avatars.com/api/?name=' + user.displayName"
-                    class="comment-avatar"
-                  />
-                  <div class="comment-content">
-                    <div class="comment-header">
-                      <span class="comment-author">{{ user.displayName }}</span>
-                      <span class="comment-date">{{ comment.createdAt | date: 'short' }}</span>
-                      @if (authStore.user()?.uid === comment.userId) {
-                        <button
-                          mat-icon-button
-                          class="delete-comment-btn"
-                          (click)="deleteComment(comment.id)"
-                        >
-                          <mat-icon
-                            style="font-size: 16px; height: 16px; width: 16px; line-height: 16px;"
-                            >delete</mat-icon
-                          >
-                        </button>
-                      }
-                    </div>
-                    <div class="comment-text" [innerHTML]="comment.content"></div>
-                  </div>
-                }
+            <div class="field-container description-container">
+              <label class="field-label">Description</label>
+              <textarea
+                matInput
+                formControlName="description"
+                class="description-textarea"
+                placeholder="Add a description..."
+                cdkTextareaAutosize
+                #autosize="cdkTextareaAutosize"
+                cdkAutosizeMinRows="3"
+                cdkAutosizeMaxRows="10"
+              ></textarea>
+            </div>
+          </form>
+
+          <!-- Subtasks Section -->
+          <div class="subtasks-section">
+            <h3>Subtasks</h3>
+            @if (subtasks.length > 0) {
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="calculateProgress()"></div>
               </div>
             }
-          </div>
 
-          <div class="add-comment">
-            @if (authStore.user(); as currentUser) {
-              <img
-                [src]="
-                  currentUser.photoURL ||
-                  'https://ui-avatars.com/api/?name=' + currentUser.displayName
-                "
-                class="comment-avatar"
+            <div class="subtask-list">
+              @for (s of subtasks; track s.id) {
+                <div class="subtask-item">
+                  <mat-checkbox [checked]="s.completed" (change)="toggleSubtask(s)">
+                    <span [class.completed-text]="s.completed">{{ s.title }}</span>
+                  </mat-checkbox>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    class="delete-subtask-btn"
+                    (click)="deleteSubtask(s.id)"
+                  >
+                    <mat-icon style="font-size: 16px; height: 16px; width: 16px;">close</mat-icon>
+                  </button>
+                </div>
+              }
+            </div>
+            <div class="add-subtask">
+              <input
+                class="subtask-input"
+                placeholder="Add a subtask..."
+                [formControl]="newSubtaskControl"
+                (keydown.enter)="addSubtask()"
               />
-            }
-            <div class="comment-input-wrapper">
-              <quill-editor
-                class="comment-editor"
-                [(ngModel)]="newCommentText"
-                [modules]="commentModules"
-                placeholder="Add a comment..."
-                theme="snow"
-              ></quill-editor>
               <button
                 mat-button
-                color="primary"
-                [disabled]="!newCommentText"
-                (click)="addComment()"
+                (click)="addSubtask()"
+                [disabled]="newSubtaskControl.invalid || !newSubtaskControl.value"
               >
-                Save
+                Add
               </button>
             </div>
           </div>
+
+          <!-- Attachments Section (Only for existing issues) -->
+          @if (isEditing) {
+            <div class="attachments-section">
+              <h3>Attachments</h3>
+
+              <div class="attachment-list">
+                @for (att of attachments; track att.id) {
+                  <div class="attachment-item">
+                    <a
+                      href="javascript:void(0)"
+                      (click)="openAttachment(att)"
+                      class="attachment-link"
+                    >
+                      <mat-icon style="font-size: 20px; height: 20px; width: 20px; color: #5e6c84;"
+                        >description</mat-icon
+                      >
+                      {{ att.name }}
+                    </a>
+                    <button
+                      mat-icon-button
+                      color="warn"
+                      (click)="deleteAttachment(att.id)"
+                      style="width: 24px; height: 24px; line-height: 24px;"
+                    >
+                      <mat-icon style="font-size: 16px; height: 16px; width: 16px;">close</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <div class="add-attachment">
+                <button mat-stroked-button (click)="fileInput.click()">
+                  <mat-icon>attach_file</mat-icon> Attach
+                </button>
+                <input
+                  #fileInput
+                  type="file"
+                  style="display:none"
+                  (change)="onFileSelected($event)"
+                />
+              </div>
+            </div>
+          }
+
+          <!-- Comments Section (Only for existing issues) -->
+          @if (isEditing) {
+            <div class="comments-section">
+              <h3>Comments</h3>
+
+              <div class="add-comment">
+                @if (authStore.user(); as currentUser) {
+                  <img
+                    [src]="
+                      currentUser.photoURL ||
+                      'https://ui-avatars.com/api/?name=' + currentUser.displayName
+                    "
+                    class="comment-avatar"
+                  />
+                }
+                <div class="comment-input-wrapper">
+                  <quill-editor
+                    class="comment-editor"
+                    [formControl]="newCommentControl"
+                    [modules]="commentModules"
+                    placeholder="Add a comment..."
+                    theme="snow"
+                  ></quill-editor>
+                  <button
+                    mat-raised-button
+                    color="primary"
+                    [disabled]="newCommentControl.invalid || !newCommentControl.value"
+                    (click)="addComment()"
+                    style="margin-top: 8px;"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              <div class="comment-list">
+                @for (comment of comments; track comment.id) {
+                  <div class="comment-item">
+                    @if (getUser(comment.userId); as user) {
+                      <img
+                        [src]="
+                          user.photoURL || 'https://ui-avatars.com/api/?name=' + user.displayName
+                        "
+                        class="comment-avatar"
+                      />
+                      <div class="comment-content">
+                        <div class="comment-header">
+                          <span class="comment-author">{{ user.displayName }}</span>
+                          <span class="comment-date">{{ comment.createdAt | date: 'short' }}</span>
+                          @if (authStore.user()?.uid === comment.userId) {
+                            <button
+                              mat-icon-button
+                              class="delete-comment-btn"
+                              (click)="deleteComment(comment.id)"
+                            >
+                              <mat-icon
+                                style="font-size: 16px; height: 16px; width: 16px; line-height: 16px;"
+                                >delete</mat-icon
+                              >
+                            </button>
+                          }
+                        </div>
+                        <div class="comment-text" [innerHTML]="comment.safeContent"></div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
-      }
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancel</button>
-      <button mat-raised-button color="primary" [disabled]="!form.valid" (click)="save()">
-        {{ isEditing ? 'Save' : 'Create' }}
-      </button>
-    </mat-dialog-actions>
+
+        <div class="sidebar-column">
+          <form [formGroup]="form" class="sidebar-form">
+            <div class="meta-section">
+              <label class="sidebar-label">Status</label>
+              <mat-form-field appearance="outline" class="sidebar-field" subscriptSizing="dynamic">
+                <mat-select formControlName="statusColumnId">
+                  <mat-option value="todo">To Do</mat-option>
+                  <mat-option value="in-progress">In Progress</mat-option>
+                  <mat-option value="done">Done</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="meta-section">
+              <label class="sidebar-label">Assignee</label>
+              <mat-form-field appearance="outline" class="sidebar-field" subscriptSizing="dynamic">
+                <mat-select formControlName="assigneeId">
+                  <mat-option [value]="null">Unassigned</mat-option>
+                  @for (member of projectsStore.members(); track member.uid) {
+                    <mat-option [value]="member.uid">
+                      {{ member.displayName }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="meta-section">
+              <label class="sidebar-label">Reporter</label>
+              <div class="read-only-value">
+                @if (reporterId && getUser(reporterId); as reporter) {
+                  <div class="reporter-chip">
+                    <img
+                      [src]="
+                        reporter.photoURL ||
+                        'https://ui-avatars.com/api/?name=' + reporter.displayName
+                      "
+                      class="reporter-avatar"
+                    />
+                    {{ reporter.displayName }}
+                  </div>
+                } @else {
+                  <span style="color: #6b778c; font-style: italic;">Wait for save...</span>
+                }
+              </div>
+            </div>
+
+            <div class="meta-section">
+              <label class="sidebar-label">Priority</label>
+              <mat-form-field appearance="outline" class="sidebar-field" subscriptSizing="dynamic">
+                <mat-select formControlName="priority">
+                  <mat-option value="low">
+                    <mat-icon
+                      style="font-size:16px; width:16px; height:16px; vertical-align:middle; color:#0065ff; margin-right:4px"
+                      >arrow_downward</mat-icon
+                    >
+                    Low
+                  </mat-option>
+                  <mat-option value="medium">
+                    <mat-icon
+                      style="font-size:16px; width:16px; height:16px; vertical-align:middle; color:#ff9900; margin-right:4px"
+                      >remove</mat-icon
+                    >
+                    Medium
+                  </mat-option>
+                  <mat-option value="high">
+                    <mat-icon
+                      style="font-size:16px; width:16px; height:16px; vertical-align:middle; color:#de350b; margin-right:4px"
+                      >arrow_upward</mat-icon
+                    >
+                    High
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="meta-section">
+              <label class="sidebar-label">Type</label>
+              <mat-form-field appearance="outline" class="sidebar-field" subscriptSizing="dynamic">
+                <mat-select formControlName="type">
+                  <mat-option value="task">Task</mat-option>
+                  <mat-option value="bug">Bug</mat-option>
+                  <mat-option value="story">Story</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="meta-section">
+              <label class="sidebar-label">Sprint</label>
+              <mat-form-field appearance="outline" class="sidebar-field" subscriptSizing="dynamic">
+                <mat-select formControlName="sprintId">
+                  <mat-option value="backlog">Backlog</mat-option>
+                  @for (sprint of selectableSprints(); track sprint.id) {
+                    <mat-option [value]="sprint.id">
+                      {{ sprint.name }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="meta-section">
+              <label class="sidebar-label">Due Date</label>
+              <mat-form-field appearance="outline" class="sidebar-field" subscriptSizing="dynamic">
+                <input matInput [matDatepicker]="picker" formControlName="dueDate" />
+                <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-datepicker #picker></mat-datepicker>
+              </mat-form-field>
+            </div>
+          </form>
+        </div>
+      </mat-dialog-content>
+
+      <mat-dialog-actions align="end" class="dialog-footer">
+        <button mat-button mat-dialog-close>Cancel</button>
+        <button mat-raised-button color="primary" [disabled]="!form.valid" (click)="save()">
+          {{ isEditing ? 'Save' : 'Create' }}
+        </button>
+      </mat-dialog-actions>
+    </div>
   `,
   styles: [
     `
-      /* Container for the form content */
-      .dialog-content {
-        max-height: 80vh;
-        overflow-y: auto;
-        overflow-x: hidden; /* Prevent horizontal scroll */
-      }
-
-      .issue-form {
+      .dialog-container {
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        width: 100%; /* Use full width of dialog */
-        box-sizing: border-box;
-        /* Add some padding to avoid fields hitting the scrollbar edge */
-        padding: 8px 24px 8px 4px;
+        height: 100%;
+        max-height: 90vh; /* Ensure it fits */
+        overflow: hidden;
       }
-
-      .meta-row {
+      .dialog-header {
+        padding: 20px 24px;
         display: flex;
-        gap: 24px;
-        margin-bottom: 16px;
-      }
-      .reporter-info,
-      .sprint-info {
-        display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: #5e6c84;
+        border-bottom: 1px solid #dfe1e6;
+        background: #fff;
+        flex-shrink: 0;
       }
-
-      .reporter-chip,
-      .sprint-chip {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        background: #ebecf0;
-        padding: 4px 8px 4px 4px;
-        border-radius: 16px;
+      .dialog-header h2 {
+        margin: 0;
+        font-size: 20px;
         font-weight: 500;
         color: #172b4d;
       }
 
-      .sprint-chip {
-        padding: 4px 12px; /* bit more padding as no avatar */
+      .dialog-content-layout {
+        display: flex;
+        flex: 1;
+        overflow: hidden; /* Hide main scroll bar, inner cols will scroll */
+        padding: 0 !important; /* Remove default mat padding */
+        gap: 0;
       }
 
+      /* Main Column (Left) */
+      .main-column {
+        flex: 1;
+        padding: 24px;
+        overflow-y: auto;
+        min-width: 0; /* Prevent flex overflow */
+      }
+
+      /* Sidebar Column (Right) */
+      .sidebar-column {
+        width: 320px;
+        padding: 24px;
+        background-color: #f4f5f7; /* Very light gray for sidebar */
+        border-left: 1px solid #dfe1e6;
+        overflow-y: auto;
+        flex-shrink: 0;
+      }
+
+      .title-field {
+        width: 100%;
+        margin-bottom: 24px;
+      }
+      /* Material Override for Title to look bigger */
+      ::ng-deep .title-field .mat-mdc-form-field-infix {
+        padding-top: 8px;
+        padding-bottom: 8px;
+        min-height: auto;
+      }
+
+      .description-container {
+        margin-bottom: 32px;
+      }
+
+      .description-textarea {
+        width: 100%;
+        min-height: 40px;
+        padding: 8px 12px;
+        border: 1px solid #dfe1e6;
+        border-radius: 3px;
+        font-family: inherit;
+        font-size: 14px;
+        line-height: 1.5;
+        resize: none;
+        box-sizing: border-box;
+      }
+      .description-textarea:focus {
+        outline: none;
+        border-color: #4c9aff;
+        background-color: #fff;
+        box-shadow: 0 0 0 1px #4c9aff;
+      }
+
+      .field-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #172b4d;
+        margin-bottom: 8px;
+      }
+
+      .sidebar-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #5e6c84;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+      }
+
+      .meta-section {
+        margin-bottom: 20px;
+      }
+
+      .sidebar-field {
+        width: 100%;
+        font-size: 14px;
+      }
+
+      /* Tighten up sidebar form fields */
+      ::ng-deep .sidebar-field .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+
+      .reporter-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        color: #172b4d;
+        font-size: 14px;
+      }
       .reporter-avatar {
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
         object-fit: cover;
       }
 
-      .row {
-        display: flex;
-        gap: 16px;
-        mat-form-field {
-          flex: 1;
-        }
+      /* Subtasks & Comments */
+      .subtasks-section,
+      .comments-section {
+        margin-top: 32px;
+      }
+      h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #172b4d;
+        margin: 0 0 16px 0;
       }
 
-      .field-container {
+      /* Comments */
+      .add-comment {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .comment-input-wrapper {
+        flex: 1;
+      }
+      .comment-editor {
+        background: #fff;
+        border: 1px solid #dfe1e6; /* Ensure border visible */
+        border-radius: 4px;
+      }
+
+      .comment-list {
         display: flex;
         flex-direction: column;
-        gap: 6px; /* Slightly tighter gap between label and input */
-        margin-bottom: 16px;
+        gap: 20px;
       }
-
-      .field-label {
+      .comment-item {
+        display: flex;
+        gap: 12px;
+      }
+      .comment-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+      .comment-content {
+        flex: 1;
+      }
+      .comment-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+      .comment-author {
+        font-weight: 600;
+        color: #42526e;
+        font-size: 14px;
+      }
+      .comment-date {
         font-size: 12px;
-        font-family: Roboto, 'Helvetica Neue', sans-serif;
-        color: var(--jira-text-secondary); /* Use var */
-        font-weight: 500;
-        margin-left: 4px;
-        letter-spacing: 0.05em; /* Match Material label somewhat */
+        color: #6b778c;
+      }
+      .comment-text {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #172b4d;
       }
 
-      quill-editor {
-        display: block;
-        background: transparent;
+      .dialog-footer {
+        padding: 16px 24px;
+        border-top: 1px solid #dfe1e6;
+        background: #f4f5f7; /* Match sidebar or be white */
+        background: #fff;
+        flex-shrink: 0;
       }
 
-      /* Dark mode overrides and General Styling for Quill */
-      :host ::ng-deep {
-        .ql-toolbar.ql-snow {
-          border: 1px solid var(--jira-border);
-          border-bottom: none;
-          background-color: var(--jira-surface-raised);
-          border-radius: 4px 4px 0 0;
-          font-family: inherit;
-        }
-
-        .ql-container.ql-snow {
-          border: 1px solid var(--jira-border);
-          background-color: var(--jira-surface-raised);
-          color: var(--jira-text);
-          font-family: inherit;
-          border-radius: 0 0 4px 4px;
-        }
-
-        /* Simulated focus-within if possible, but hard with just CSS on parent. 
-           We can just make it look good inactive and on hover. */
-        .ql-container.ql-snow:hover,
-        .ql-toolbar.ql-snow:hover {
-          /* border-color: #b3b3b3; */ /* Slight darken on hover? */
-        }
-
-        .ql-editor {
-          min-height: 120px; /* Slightly taller */
-          font-family: Roboto, 'Helvetica Neue', sans-serif;
-          font-size: 14px;
-          line-height: 1.5;
-        }
-
-        .ql-stroke {
-          stroke: var(--jira-text-secondary);
-        }
-        .ql-fill {
-          fill: var(--jira-text-secondary);
-        }
-        .ql-picker {
-          color: var(--jira-text-secondary);
-        }
-      }
-
-      .subtasks-section {
-        margin-top: 24px;
-        padding: 0 4px;
-      }
+      /* Progress bar */
       .progress-bar {
-        height: 4px;
+        height: 6px;
         background: #ebecf0;
-        border-radius: 2px;
+        border-radius: 3px;
         margin-bottom: 12px;
         overflow: hidden;
       }
@@ -423,149 +605,73 @@ export interface IssueDialogData {
         background: #0052cc;
         transition: width 0.3s ease;
       }
-      .subtask-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-bottom: 12px;
-      }
+
       .subtask-item {
         display: flex;
-        align-items: center;
         justify-content: space-between;
-        &:hover .delete-subtask-btn {
-          opacity: 1;
-        }
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px solid #f4f5f7;
       }
-      .completed-text {
-        text-decoration: line-through;
-        color: #5e6c84;
-      }
-      .delete-subtask-btn {
-        width: 24px;
-        height: 24px;
-        line-height: 24px;
-        opacity: 0;
-        transition: opacity 0.2s;
-        mat-icon {
-          font-size: 16px;
-        }
+      .subtask-item:hover {
+        background: #fafbfc;
       }
       .add-subtask {
+        margin-top: 12px;
         display: flex;
         gap: 8px;
-        align-items: center;
       }
       .subtask-input {
         flex: 1;
         padding: 8px;
         border: 1px solid #dfe1e6;
         border-radius: 3px;
-        outline: none;
-        &:focus {
-          border-color: #4c9aff;
-        }
       }
 
-      .comments-section {
+      /* Quill Overrides for new layout */
+      :host ::ng-deep .ql-toolbar.ql-snow {
+        border-color: #dfe1e6;
+        background: #f4f5f7;
+      }
+      :host ::ng-deep .ql-container.ql-snow {
+        border-color: #dfe1e6;
+        background: #fff;
+      }
+      :host ::ng-deep .comment-editor .ql-container {
+        min-height: 80px;
+      }
+
+      /* Attachments */
+      .attachments-section {
         margin-top: 32px;
-        border-top: 1px solid #dfe1e6;
-        padding-top: 24px;
       }
-
-      .comment-list {
+      .attachment-list {
         display: flex;
         flex-direction: column;
-        gap: 16px;
-        margin-bottom: 16px;
+        gap: 8px;
+        margin-bottom: 12px;
       }
-
-      .comment-item {
+      .attachment-item {
         display: flex;
-        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: #fff;
+        border: 1px solid #dfe1e6;
+        border-radius: 3px;
       }
-
-      .comment-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        object-fit: cover;
-      }
-
-      /* ... rest of styles same as before ... */
-      .comment-content {
-        flex: 1;
-      }
-
-      .comment-header {
+      .attachment-link {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 4px;
-      }
-
-      .delete-comment-btn {
-        opacity: 0;
-        transition: opacity 0.2s ease-in-out;
-        margin-left: auto;
-        width: 24px !important;
-        height: 24px !important;
-        line-height: 24px !important;
-        padding: 0 !important;
-
-        mat-icon {
-          color: #6b778c;
-        }
-
-        &:hover mat-icon {
-          color: #de350b;
-        }
-      }
-
-      .comment-item:hover .delete-comment-btn {
-        opacity: 1;
-      }
-
-      .comment-author {
+        text-decoration: none;
+        color: #172b4d;
         font-weight: 500;
-        font-size: 13px;
-        color: #172b4d;
-      }
-
-      .comment-date {
-        font-size: 11px;
-        color: #5e6c84;
-      }
-
-      .comment-text {
         font-size: 14px;
-        color: #172b4d;
-        line-height: 1.5;
       }
-
-      .add-comment {
-        display: flex;
-        gap: 12px;
-        margin-top: 16px;
-      }
-
-      .comment-input-wrapper {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        border: 1px solid #dfe1e6;
-        border-radius: 4px;
-        padding: 8px;
-        transition: border-color 0.2s;
-
-        &:focus-within {
-          border-color: #4c9aff;
-        }
-      }
-
-      .comment-editor {
-        width: 100%;
+      .attachment-link:hover {
+        color: #0052cc;
+        text-decoration: underline;
       }
     `,
   ],
@@ -574,7 +680,11 @@ export class IssueDialog {
   projectsStore = inject(ProjectsStore);
   authStore = inject(AuthStore);
   sprintStore = inject(SprintStore);
+  notificationStore = inject(NotificationStore);
   private fb = inject(FormBuilder);
+  private cdr = inject(ChangeDetectorRef);
+  private sanitizer = inject(DomSanitizer);
+  private destroyRef = inject(DestroyRef);
   issueService = inject(IssueService);
 
   selectableSprints = computed(() =>
@@ -607,11 +717,16 @@ export class IssueDialog {
   // Auxiliary state for things not in the main form or complex UI handling
   comments: any[] = [];
   subtasks: Subtask[] = [];
+  attachments: Attachment[] = [];
   reporterId: string | undefined | null = null;
   isEditing = false;
 
-  newCommentText = '';
-  newSubtaskTitle = '';
+  newCommentControl = new FormControl('', [Validators.required]);
+  newSubtaskControl = new FormControl('', [Validators.required]);
+
+  // File upload state
+  uploadingFiles: File[] = [];
+  isDragOver = false;
 
   constructor(
     public dialogRef: MatDialogRef<IssueDialog>,
@@ -621,21 +736,48 @@ export class IssueDialog {
 
     if (data.issue) {
       this.isEditing = true;
-      // Load data specifically
       this.form.patchValue({
         title: data.issue.title,
         description: data.issue.description,
         type: data.issue.type,
         priority: data.issue.priority,
-        assigneeId: data.issue.assigneeId || null,
-        statusColumnId: data.issue.statusColumnId || data.statusColumnId || 'todo',
-        sprintId: data.issue.sprintId || 'backlog',
+        assigneeId: data.issue.assigneeId,
+        statusColumnId: data.issue.statusColumnId,
+        sprintId: data.issue.sprintId,
         dueDate: data.issue.dueDate ? new Date(data.issue.dueDate) : null,
       });
 
       this.reporterId = data.issue.reporterId || null;
-      this.comments = data.issue.comments || [];
-      this.subtasks = data.issue.subtasks || [];
+
+      // Load subcollections
+      const issueId = data.issue.id;
+
+      this.issueService
+        .getComments(issueId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((comments) => {
+          this.comments = comments.map((c) => ({
+            ...c,
+            safeContent: this.sanitizeHtml(c.content),
+          }));
+          this.cdr.markForCheck();
+        });
+
+      this.issueService
+        .getSubtasks(issueId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((subtasks) => {
+          this.subtasks = subtasks;
+          this.cdr.markForCheck();
+        });
+
+      this.issueService
+        .getAttachments(issueId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((attachments) => {
+          this.attachments = attachments;
+          this.cdr.markForCheck();
+        });
     } else {
       // Set default status if creating new
       this.form.patchValue({
@@ -666,103 +808,234 @@ export class IssueDialog {
     return this.sprintStore.sprints().find((s) => s.id === sprintId);
   }
 
-  // ... Comment methods same as before ...
+  // --- Helper Methods ---
+
+  sanitizeHtml(html: string): any {
+    // Whitelist only what Quill uses
+    const clean = DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: [
+        'p',
+        'br',
+        'strong',
+        'em',
+        'u',
+        's',
+        'blockquote',
+        'pre',
+        'ol',
+        'ul',
+        'li',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'span',
+        'a',
+      ],
+      ALLOWED_ATTR: ['href', 'target', 'class', 'style', 'color'],
+    });
+    return this.sanitizer.bypassSecurityTrustHtml(clean);
+  }
+
+  // --- Comment Methods ---
+
+  private isQuillEmpty(html: string): boolean {
+    if (!html) return true;
+    const normalized = html
+      .replace(/<p><br><\/p>/g, '')
+      .replace(/<(.|\n)*?>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .trim();
+    return !normalized;
+  }
+
   addComment() {
-    if (!this.newCommentText.trim()) return;
+    const content = this.newCommentControl.value || '';
+    if (this.isQuillEmpty(content)) return;
 
     const user = this.authStore.user();
     if (!user) return;
 
     const newComment = {
-      id: Math.random().toString(36).substr(2, 9),
       userId: user.uid,
-      content: this.newCommentText,
+      content: content,
       createdAt: new Date().toISOString(),
     };
 
-    const updatedComments = [...this.comments, newComment];
-
     if (this.isEditing && this.data.issue?.id) {
       this.issueService
-        .updateIssue(this.data.issue.id, { comments: updatedComments })
+        .addCommentToIssue(this.data.issue.id, newComment)
         .then(() => {
-          this.comments = updatedComments;
-          this.newCommentText = '';
+          this.newCommentControl.reset();
+
+          // Notifications
+          const issue = this.data.issue!;
+          const recipients = new Set<string>();
+          if (issue.assigneeId) recipients.add(issue.assigneeId);
+          if (issue.reporterId) recipients.add(issue.reporterId);
+          recipients.delete(user.uid);
+          recipients.forEach((recipientId) => {
+            this.notificationStore.createNotification({
+              recipientId,
+              senderId: user.uid,
+              type: 'COMMENT',
+              issueId: issue.id,
+              projectId: issue.projectId,
+              content: `${user.displayName} commented on ${issue.title}`,
+              createdAt: new Date().toISOString(),
+              read: false,
+            });
+          });
         })
-        .catch((error) => {
-          console.error('Error saving comment:', error);
+        .catch((err) => {
+          console.error('Error adding comment', err);
+          alert('Failed to add comment');
         });
     } else {
-      this.comments = updatedComments;
-      this.newCommentText = '';
+      const tempComment = { ...newComment, id: crypto.randomUUID() };
+      this.comments = [...this.comments, tempComment];
+      this.newCommentControl.reset();
     }
   }
 
   deleteComment(commentId: string) {
     if (!confirm('Are you sure you want to delete this comment?')) return;
 
-    const updatedComments = this.comments.filter((c) => c.id !== commentId);
-
     if (this.isEditing && this.data.issue?.id) {
-      this.issueService
-        .updateIssue(this.data.issue.id, { comments: updatedComments })
-        .then(() => {
-          this.comments = updatedComments;
-        })
-        .catch((error) => {
-          console.error('Error deleting comment:', error);
-        });
+      this.issueService.deleteCommentFromIssue(this.data.issue.id, commentId).catch((err) => {
+        console.error('Error deleting comment', err);
+        alert('Failed to delete comment');
+      });
     } else {
-      this.comments = updatedComments;
+      // Local delete
+      this.comments = this.comments.filter((c) => c.id !== commentId);
     }
   }
 
   // --- Subtask Methods ---
 
   addSubtask() {
-    if (!this.newSubtaskTitle.trim()) return;
+    if (!this.newSubtaskControl.value || !this.newSubtaskControl.value.trim()) return;
 
-    const newSubtask: Subtask = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: this.newSubtaskTitle,
+    const title = this.newSubtaskControl.value;
+    const newSubtask = {
+      title: title,
       completed: false,
     };
 
-    const updatedSubtasks = [...this.subtasks, newSubtask];
-
     if (this.isEditing && this.data.issue?.id) {
-      this.issueService.updateIssue(this.data.issue.id, { subtasks: updatedSubtasks }).then(() => {
-        this.subtasks = updatedSubtasks;
-        this.newSubtaskTitle = '';
-      });
+      this.issueService
+        .addSubtaskToIssue(this.data.issue.id, newSubtask)
+        .then(() => {
+          this.newSubtaskControl.reset();
+        })
+        .catch((err) => console.error(err));
     } else {
-      this.subtasks = updatedSubtasks;
-      this.newSubtaskTitle = '';
+      const tempTask = { ...newSubtask, id: crypto.randomUUID() };
+      this.subtasks = [...this.subtasks, tempTask];
+      this.newSubtaskControl.reset();
     }
   }
 
   toggleSubtask(subtask: Subtask) {
-    subtask.completed = !subtask.completed;
-
-    // Create new array trigger change detection if needed, but important for object update
-    const updatedSubtasks = this.subtasks.map((s) => (s.id === subtask.id ? subtask : s));
-
     if (this.isEditing && this.data.issue?.id) {
-      this.issueService.updateIssue(this.data.issue.id, { subtasks: updatedSubtasks });
+      this.issueService.updateSubtask(this.data.issue.id, subtask.id, {
+        completed: !subtask.completed,
+      });
     } else {
+      const updatedSubtasks = this.subtasks.map((s) =>
+        s.id === subtask.id ? { ...s, completed: !s.completed } : s,
+      );
       this.subtasks = updatedSubtasks;
     }
   }
 
   deleteSubtask(subtaskId: string) {
-    const updatedSubtasks = this.subtasks.filter((s) => s.id !== subtaskId);
+    if (this.isEditing && this.data.issue?.id) {
+      this.issueService.deleteSubtaskFromIssue(this.data.issue.id, subtaskId);
+    } else {
+      this.subtasks = this.subtasks.filter((s) => s.id !== subtaskId);
+    }
+  }
+
+  // --- Attachment Methods ---
+
+  async onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    const file = input.files[0];
+    input.value = '';
 
     if (this.isEditing && this.data.issue?.id) {
-      this.issueService.updateIssue(this.data.issue.id, { subtasks: updatedSubtasks }).then(() => {
-        this.subtasks = updatedSubtasks;
-      });
+      try {
+        const base64 = await this.issueService.uploadIssueAttachment(this.data.issue.id, file); // Still use helper, but it just does base64
+        const newAttachment = {
+          name: file.name,
+          url: base64, // Storing base64 in subcollection doc
+          type: file.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+          uploaderId: this.authStore.user()?.uid || 'unknown',
+        };
+        await this.issueService.addAttachmentToIssue(this.data.issue.id, newAttachment);
+      } catch (err) {
+        console.error('Upload failed', err);
+        alert('Upload failed');
+      }
     } else {
-      this.subtasks = updatedSubtasks;
+      try {
+        // just base64 conv
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const newAtt: Attachment = {
+            id: crypto.randomUUID(),
+            name: file.name,
+            url: reader.result as string,
+            type: file.type,
+            size: file.size,
+            uploadedAt: new Date().toISOString(),
+            uploaderId: (this.authStore.user()?.uid || 'unknown') as string,
+          };
+          this.attachments = [...this.attachments, newAtt];
+        };
+      } catch (e) {}
+    }
+  }
+
+  deleteAttachment(attachmentId: string) {
+    if (!confirm('Are you sure you want to remove this attachment?')) return;
+
+    if (this.isEditing && this.data.issue?.id) {
+      this.issueService
+        .deleteAttachmentFromIssue(this.data.issue.id, attachmentId)
+        .catch((error) => {
+          console.error('Error removing attachment:', error);
+          this.cdr.markForCheck();
+          alert('Failed to remove attachment.');
+        });
+    }
+  }
+
+  openAttachment(att: Attachment) {
+    const win = window.open();
+    if (win) {
+      const isImage = att.type.startsWith('image/');
+      const content = isImage
+        ? `<img src="${att.url}" style="max-width:100%">`
+        : `<iframe src="${att.url}" style="width:100%;height:100%;border:none;"></iframe>`;
+
+      win.document.write(`
+        <html>
+          <head><title>${att.name}</title></head>
+          <body style="margin:0; display:flex; justify-content:center; align-items:center; background:#0b0f19;">
+            ${content}
+          </body>
+        </html>
+      `);
+      win.document.close();
     }
   }
 
@@ -772,43 +1045,87 @@ export class IssueDialog {
     return (completed / this.subtasks.length) * 100;
   }
 
-  save() {
+  async save() {
     if (this.form.invalid) return;
 
     const formValue = this.form.getRawValue();
 
-    const result: any = {
+    const basicData: any = {
       ...formValue,
       dueDate: formValue.dueDate ? formValue.dueDate.toISOString() : null,
+      // Default to currentUser as reporter if creating
+      reporterId: this.isEditing
+        ? this.data.issue?.reporterId || this.authStore.user()?.uid
+        : this.authStore.user()?.uid,
     };
 
-    if (!this.isEditing) {
-      result.comments = this.comments;
-      result.subtasks = this.subtasks;
-      // Set reporterId for new issues
-      const currentUser = this.authStore.user();
-      if (currentUser) {
-        result.reporterId = currentUser.uid;
-      }
-    }
-
-    // Convert 'backlog' string to null
-    if (result.sprintId === 'backlog') {
-      result.sprintId = null;
+    // Convert 'backlog' string to null for sprintId
+    if (basicData.sprintId === 'backlog') {
+      basicData.sprintId = null;
     }
 
     // Auto-set isInBacklog based on sprint
-    if (result.sprintId) {
-      const sprint = this.sprintStore.sprints().find((s) => s.id === result.sprintId);
+    if (basicData.sprintId) {
+      const sprint = this.sprintStore.sprints().find((s) => s.id === basicData.sprintId);
       if (sprint && sprint.status === 'active') {
-        result.isInBacklog = false;
+        basicData.isInBacklog = false;
       } else {
-        result.isInBacklog = true;
+        basicData.isInBacklog = true;
       }
     } else {
-      result.isInBacklog = true;
+      basicData.isInBacklog = true;
     }
 
-    this.dialogRef.close(result);
+    // ProjectId needed for new issue
+    if (!this.isEditing) {
+      const projectId = this.projectsStore.selectedProjectId();
+      if (projectId) {
+        basicData.projectId = projectId;
+      }
+      basicData.boardId = projectId;
+    }
+
+    try {
+      if (this.isEditing && this.data.issue?.id) {
+        // UPDATE
+        await this.issueService.updateIssue(this.data.issue.id, basicData);
+
+        // Check Assignment Notification
+        const currentUser = this.authStore.user();
+        const newAssigneeId = basicData.assigneeId;
+        const oldAssigneeId = this.data.issue.assigneeId;
+
+        if (
+          currentUser &&
+          newAssigneeId &&
+          newAssigneeId !== oldAssigneeId &&
+          newAssigneeId !== currentUser.uid
+        ) {
+          this.notificationStore.createNotification({
+            recipientId: newAssigneeId,
+            senderId: currentUser.uid,
+            type: 'ASSIGNMENT',
+            issueId: this.data.issue.id,
+            projectId: this.data.issue.projectId,
+            content: `${currentUser.displayName} assigned you to ${basicData.title}`,
+            createdAt: new Date().toISOString(),
+            read: false,
+          });
+        }
+
+        this.dialogRef.close(); // No result needed, relying on stream updates
+      } else {
+        this.dialogRef.close({
+          ...basicData,
+          __isNew: true,
+          comments: this.comments,
+          subtasks: this.subtasks,
+          attachments: this.attachments,
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Failed to save issue');
+    }
   }
 }

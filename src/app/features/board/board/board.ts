@@ -24,6 +24,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CommonModule, DatePipe } from '@angular/common';
+import { NotificationStore } from '../../notifications/notification.store';
 
 @Component({
   selector: 'app-board',
@@ -371,6 +372,7 @@ export class Board implements OnInit {
   private route = inject(ActivatedRoute);
   private dialog = inject(MatDialog);
   private issueService = inject(IssueService);
+  private notificationStore = inject(NotificationStore);
 
   constructor() {
     effect(() => {
@@ -388,6 +390,26 @@ export class Board implements OnInit {
         this.store.loadIssues(projectId);
         this.sprintStore.loadSprints(projectId); // Load sprints to check active sprint
         this.projectsStore.selectProject(projectId);
+      }
+    });
+
+    // Handle deep linking to issue
+    this.route.queryParams.subscribe(async (params) => {
+      const issueId = params['issueId'];
+      if (issueId) {
+        try {
+          const issue = await this.issueService.getIssue(issueId);
+          if (issue) {
+            // Check if dialog is already open to avoid duplicates
+            if (this.dialog.openDialogs.length === 0) {
+              // Use statusColumnId if available, or default to 'todo' or deduce it
+              const status = issue.statusColumnId || 'todo';
+              this.openIssueDialog(status, issue);
+            }
+          }
+        } catch (e) {
+          console.error('Failed to load linked issue', e);
+        }
       }
     });
   }
@@ -413,7 +435,8 @@ export class Board implements OnInit {
   openIssueDialog(statusColumnId: string, issue?: Issue) {
     const activeSprint = this.sprintStore.activeSprint();
     const dialogRef = this.dialog.open(IssueDialog, {
-      width: '500px',
+      width: '900px',
+      maxWidth: '90vw',
       data: {
         statusColumnId,
         issue,
@@ -423,9 +446,42 @@ export class Board implements OnInit {
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
+        // Notification Logic
+        const currentUser = this.authStore.user();
+        const newAssigneeId = result.assigneeId;
+        const oldAssigneeId = issue?.assigneeId;
+
+        if (currentUser && newAssigneeId && newAssigneeId !== oldAssigneeId) {
+          // Avoid notifying self if self-assigned? Jira usually does anyway, but let's notify.
+          // But definitely don't notify if user is assigning themselves?
+          // Actually, if I assign myself, I probably don't need a notification.
+          if (newAssigneeId !== currentUser.uid) {
+            this.notificationStore.createNotification({
+              recipientId: newAssigneeId,
+              senderId: currentUser.uid,
+              type: 'ASSIGNMENT',
+              issueId: issue ? issue.id : 'pending', // ID might be tricky for new issues
+              // For new issues, we don't have ID yet here before addIssue is called?
+              // Actually store.addIssue -> issueService.addIssue which returns ref.
+              // But store.addIssue is void/async but we don't await result here in this version.
+              // IMPORTANT: NotificationStore.createNotification is async but fire-and-forget here.
+              // If we don't have issueId, we can't link effectively.
+              // But for existing issue we have ID.
+              projectId: this.projectsStore.selectedProjectId()!,
+              content: `${currentUser.displayName} assigned you to ${result.title}`,
+              createdAt: new Date().toISOString(),
+              read: false,
+            });
+          }
+        }
+
         if (issue) {
           // Update existing
-          this.store.updateIssue(issue.id, result);
+          // Dialog returns updated data but doesn't handle update? Wait, IssueDialog DOES handle update now (returns undefined).
+          // If result is undefined, we do nothing.
+          // BUT IssueDialog.save() returns undefined if isEditing.
+          // So if (result) is false, this block is skipped.
+          // Correct.
         } else {
           // Create new
           const projectId = this.projectsStore.selectedProjectId();
@@ -437,17 +493,57 @@ export class Board implements OnInit {
 
             const isAssignedToActiveSprint = activeSprint && selectedSprintId === activeSprint.id;
 
-            this.store.addIssue({
-              ...result,
+            // Extract subcollections
+            const { comments, subtasks, attachments, ...issueData } = result;
+
+            const newIssue = {
+              ...issueData,
               projectId,
               boardId: projectId,
               order: 0,
               key: this.store.getNextIssueKey(projectKey),
               reporterId: this.authStore.user()?.uid,
-              // Use the sprintId from the dialog result (which defaults to active sprint if not changed)
               sprintId: selectedSprintId || null,
-              // Only show on board if assigned to the active sprint
               isInBacklog: !isAssignedToActiveSprint,
+            };
+
+            // Call Service directly to get Ref ID
+            this.issueService.addIssue(newIssue).then(async (docRef) => {
+              const newId = docRef.id;
+
+              // Add Subitems
+              const promises: Promise<any>[] = [];
+              if (comments && comments.length) {
+                comments.forEach((c: any) =>
+                  promises.push(this.issueService.addCommentToIssue(newId, c)),
+                );
+              }
+              if (subtasks && subtasks.length) {
+                subtasks.forEach((s: any) =>
+                  promises.push(this.issueService.addSubtaskToIssue(newId, s)),
+                );
+              }
+              if (attachments && attachments.length) {
+                attachments.forEach((a: any) =>
+                  promises.push(this.issueService.addAttachmentToIssue(newId, a)),
+                );
+              }
+
+              await Promise.all(promises);
+
+              // Notification with Real ID
+              if (currentUser && newAssigneeId && newAssigneeId !== currentUser.uid) {
+                this.notificationStore.createNotification({
+                  recipientId: newAssigneeId,
+                  senderId: currentUser.uid,
+                  type: 'ASSIGNMENT',
+                  issueId: newId,
+                  projectId: projectId,
+                  content: `${currentUser.displayName} assigned you to ${result.title}`,
+                  createdAt: new Date().toISOString(),
+                  read: false,
+                });
+              }
             });
           }
         }

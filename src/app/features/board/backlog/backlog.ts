@@ -24,6 +24,7 @@ import {
 import { Issue } from '../../issue/issue.model';
 import { CompleteSprintDialog } from './complete-sprint-dialog/complete-sprint-dialog';
 import { MembersDialog } from '../../projects/members-dialog/members-dialog';
+import { NotificationStore } from '../../notifications/notification.store';
 
 @Component({
   selector: 'app-backlog',
@@ -437,6 +438,7 @@ export class Backlog {
   route = inject(ActivatedRoute);
   router = inject(Router);
   authStore = inject(AuthStore);
+  notificationStore = inject(NotificationStore);
 
   // Group issues by sprint
   // Issues with no sprintId are in the backlog
@@ -665,7 +667,8 @@ export class Backlog {
 
   createIssue() {
     const dialogRef = this.dialog.open(IssueDialog, {
-      width: '600px',
+      width: '900px',
+      maxWidth: '90vw',
       data: { statusColumnId: 'todo' }, // Default column if moved
     });
 
@@ -675,31 +678,29 @@ export class Backlog {
         const projectKey = this.projectsStore.selectedProject()?.key;
         const currentUser = this.authStore.user();
         if (projectId && projectKey && currentUser) {
+          // Extract subcollections from result
+          const { comments, subtasks, attachments, ...issueData } = result;
+
           const newIssue: any = {
             title: result.title,
             description: result.description || '',
             type: result.type,
             priority: result.priority,
-            statusColumnId: result.statusColumnId,
+            statusColumnId: result.statusColumnId || 'todo',
             projectId: projectId,
             boardId: projectId,
             order: 0,
             key: this.boardStore.getNextIssueKey(projectKey),
             reporterId: currentUser.uid,
             assigneeId: result.assigneeId || null,
-            isInBacklog: true, // Always backlog when creating from here?
-            comments: [],
-            subtasks: result.subtasks || [],
+            isInBacklog: result.hasOwnProperty('isInBacklog') ? result.isInBacklog : true,
+            // Main doc should NOT have subcollection arrays
           };
 
           if (result.dueDate) {
             newIssue.dueDate = result.dueDate;
           }
 
-          // Ensure isInBacklog matches logic
-          newIssue.isInBacklog = result.hasOwnProperty('isInBacklog') ? result.isInBacklog : true;
-
-          // Only add sprintId if it exists (it shouldn't for backlog creation usually)
           if (result.sprintId) {
             newIssue.sprintId = result.sprintId;
           } else {
@@ -707,7 +708,44 @@ export class Backlog {
           }
 
           console.log('Creating Issue Payload:', newIssue);
-          this.boardStore.addIssue(newIssue);
+
+          // Call Service directly
+          this.issueService.addIssue(newIssue).then(async (docRef) => {
+            const newId = docRef.id;
+
+            // Add Subitems
+            const promises: Promise<any>[] = [];
+            if (comments && comments.length) {
+              comments.forEach((c: any) =>
+                promises.push(this.issueService.addCommentToIssue(newId, c)),
+              );
+            }
+            if (subtasks && subtasks.length) {
+              subtasks.forEach((s: any) =>
+                promises.push(this.issueService.addSubtaskToIssue(newId, s)),
+              );
+            }
+            if (attachments && attachments.length) {
+              attachments.forEach((a: any) =>
+                promises.push(this.issueService.addAttachmentToIssue(newId, a)),
+              );
+            }
+
+            await Promise.all(promises);
+
+            if (currentUser && result.assigneeId && result.assigneeId !== currentUser.uid) {
+              this.notificationStore.createNotification({
+                recipientId: result.assigneeId,
+                senderId: currentUser.uid,
+                type: 'ASSIGNMENT',
+                issueId: newId,
+                projectId: projectId,
+                content: `${currentUser.displayName} assigned you to ${result.title}`,
+                createdAt: new Date().toISOString(),
+                read: false,
+              });
+            }
+          });
         }
       }
     });
@@ -715,11 +753,32 @@ export class Backlog {
 
   editIssue(issue: any) {
     const dialogRef = this.dialog.open(IssueDialog, {
-      width: '600px',
+      width: '900px',
+      maxWidth: '90vw', // Responsive
       data: { issue },
     });
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
+        // Notification Logic
+        const currentUser = this.authStore.user();
+        const newAssigneeId = result.assigneeId;
+        const oldAssigneeId = issue.assigneeId;
+
+        if (currentUser && newAssigneeId && newAssigneeId !== oldAssigneeId) {
+          if (newAssigneeId !== currentUser.uid) {
+            this.notificationStore.createNotification({
+              recipientId: newAssigneeId,
+              senderId: currentUser.uid,
+              type: 'ASSIGNMENT',
+              issueId: issue.id,
+              projectId: issue.projectId,
+              content: `${currentUser.displayName} assigned you to ${result.title}`,
+              createdAt: new Date().toISOString(),
+              read: false,
+            });
+          }
+        }
+
         this.boardStore.updateIssue(issue.id, result);
       }
     });

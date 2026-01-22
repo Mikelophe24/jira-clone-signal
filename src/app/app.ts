@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthStore } from './core/auth/auth.store';
 import { ProjectsStore } from './features/projects/projects.store';
@@ -12,6 +12,10 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { MatDividerModule } from '@angular/material/divider';
 import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs';
+import { DatePipe } from '@angular/common';
+import { NotificationStore } from './features/notifications/notification.store';
+import { Notification } from './features/notifications/notification.model';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -28,6 +32,7 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
     MatSidenavModule,
     MatListModule,
     MatDividerModule,
+    DatePipe,
   ],
   template: `
     <div class="app-container">
@@ -48,21 +53,27 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
 
         @if (authStore.user()) {
           <!-- Notifications -->
+          <!-- Notifications -->
           <button
             mat-icon-button
             [matMenuTriggerFor]="notificationMenu"
-            [matBadge]="projectsStore.pendingInvites().length"
+            [matBadge]="projectsStore.pendingInvites().length + notificationStore.unreadCount()"
             matBadgeColor="warn"
-            [matBadgeHidden]="projectsStore.pendingInvites().length === 0"
+            [matBadgeHidden]="
+              projectsStore.pendingInvites().length === 0 && notificationStore.unreadCount() === 0
+            "
           >
-            <mat-icon>notifications</mat-icon>
+            <mat-icon [class.has-updates]="notificationStore.unreadCount() > 0"
+              >notifications</mat-icon
+            >
           </button>
 
-          <mat-menu #notificationMenu="matMenu">
+          <mat-menu #notificationMenu="matMenu" (closed)="resetNotifications()">
             @for (invite of projectsStore.pendingInvites(); track invite.id) {
               <div class="invite-item" (click)="$event.stopPropagation()">
                 <span class="invite-text">
-                  Invitation to <strong>{{ invite.name }}</strong> by
+                  Invitation to <strong>{{ invite.name }}</strong> as a
+                  <strong>{{ getInviteRole(invite) }}</strong> by
                   <strong>{{ getOwnerName(invite.ownerId) }}</strong>
                 </span>
                 <div class="invite-actions">
@@ -75,7 +86,42 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
                 </div>
               </div>
             } @empty {
-              <div class="no-invites">No notifications exists</div>
+              @if (notificationStore.notifications().length === 0) {
+                <div class="no-invites">No notifications</div>
+              }
+            }
+
+            @if (
+              projectsStore.pendingInvites().length > 0 &&
+              notificationStore.notifications().length > 0
+            ) {
+              <mat-divider></mat-divider>
+            }
+
+            @for (notification of visibleNotifications(); track notification.id) {
+              <div
+                class="notification-item"
+                [class.unread]="!notification.read"
+                (click)="handleNotificationClick(notification)"
+              >
+                <div class="notification-content">
+                  <div class="notification-text">{{ notification.content }}</div>
+                  <div class="notification-date">{{ notification.createdAt | date: 'short' }}</div>
+                </div>
+                @if (!notification.read) {
+                  <div class="unread-dot"></div>
+                }
+              </div>
+            }
+
+            @if (!showAllNotifications() && notificationStore.notifications().length > 5) {
+              <button mat-button class="show-more-btn" (click)="toggleShowAll($event)">
+                Show more ({{ notificationStore.notifications().length - 5 }} hidden)
+              </button>
+            } @else if (showAllNotifications()) {
+              <button mat-button class="show-more-btn" (click)="toggleShowAll($event)">
+                Show less
+              </button>
             }
           </mat-menu>
 
@@ -247,6 +293,72 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
         color: #888;
         font-style: italic;
         text-align: center;
+        font-size: 13px;
+      }
+
+      .notification-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.2s;
+        gap: 12px;
+        max-width: 300px;
+      }
+
+      .notification-item:hover {
+        background-color: #f4f5f7;
+      }
+
+      .notification-item.unread {
+        background-color: #e6f7ff; /* Light blue for unread */
+      }
+      .notification-item.unread:hover {
+        background-color: #bae7ff;
+      }
+
+      .notification-content {
+        flex: 1;
+      }
+
+      .notification-text {
+        font-size: 13px;
+        color: #172b4d;
+        line-height: 1.4;
+        margin-bottom: 4px;
+      }
+
+      .notification-date {
+        font-size: 11px;
+        color: #6b778c;
+      }
+
+      .unread-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #0052cc;
+        flex-shrink: 0;
+      }
+
+      .has-updates {
+        /* animation: swing 1s ease; */
+      }
+
+      .show-more-btn {
+        width: 100%;
+        color: #0052cc;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 8px;
+        text-align: center;
+        border-top: 1px solid #eee;
+        border-radius: 0;
+      }
+      .show-more-btn:hover {
+        background-color: #f4f5f7;
       }
     `,
   ],
@@ -254,10 +366,32 @@ import { BreadcrumbsComponent } from './core/components/breadcrumbs/breadcrumbs'
 export class AppComponent {
   readonly authStore = inject(AuthStore);
   readonly projectsStore = inject(ProjectsStore);
+  readonly notificationStore = inject(NotificationStore);
   readonly themeStore = inject(ThemeStore);
+  private router = inject(Router);
 
   // Sidebar state
   readonly sidebarOpened = signal<boolean>(true);
+
+  // Notifications display state
+  readonly showAllNotifications = signal<boolean>(false);
+
+  readonly visibleNotifications = computed(() => {
+    const notifications = this.notificationStore.notifications();
+    if (this.showAllNotifications()) {
+      return notifications;
+    }
+    return notifications.slice(0, 5);
+  });
+
+  toggleShowAll(event: Event) {
+    event.stopPropagation();
+    this.showAllNotifications.set(!this.showAllNotifications());
+  }
+
+  resetNotifications() {
+    this.showAllNotifications.set(false);
+  }
 
   toggleSidebar() {
     this.sidebarOpened.set(!this.sidebarOpened());
@@ -280,5 +414,31 @@ export class AppComponent {
   getOwnerName(ownerId: string): string {
     const owner = this.projectsStore.projectOwners().find((u: any) => u.uid === ownerId);
     return owner?.displayName || 'Unknown';
+  }
+
+  getInviteRole(project: any): string {
+    const userId = this.authStore.user()?.uid;
+    if (!userId || !project.roles) return 'Member';
+    const role = project.roles[userId];
+    return role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Member';
+  }
+
+  handleNotificationClick(notification: Notification) {
+    if (!notification.read) {
+      this.notificationStore.markAsRead(notification.id);
+    }
+    // Navigate to the issue
+    // We assume the route is /project/:projectId/board?issueId=:issueId or similar
+    // Or just /project/:projectId and open the issue dialog via query param or local state?
+    // Current app seems to use URLs like /project/:id.
+    // Let's assume navigating to the project board is a good start.
+    // If the app supports deep linking to issue issues, we'd use that.
+    // Based on previous conversations, clicking an issue usually opens a dialog.
+    // We might not have deep linking set up for dialogs yet.
+    // For now, just go to the project.
+    // Navigate to the project board with issueId query param
+    this.router.navigate(['/project', notification.projectId, 'board'], {
+      queryParams: { issueId: notification.issueId },
+    });
   }
 }
